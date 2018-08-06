@@ -7,8 +7,20 @@ pin_run_as_build:
     max_pin: x.x
   bamtools:
     max_pin: x.x.x
+  cuda-driver:
+    max_pin: x.x
+  cudatoolkit:
+    max_pin: x.x
+  cudnn:
+    max_pin: x.x.x
 
 htslib:
   - 1.7
 bamtools:
   - 2.4.1
+cuda-driver:
+  - 375.66
+cudatoolkit:
+  - 8.0
+cudnn:
+  - 7.0.5
