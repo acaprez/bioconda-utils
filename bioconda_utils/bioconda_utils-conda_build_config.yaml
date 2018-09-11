@@ -9,12 +9,12 @@ pin_run_as_build:
     max_pin: x.x.x
   libdeflate:
     max_pin: x.x
-  cuda_driver:
-    max_pin: x.x
-  cudatoolkit:
-    max_pin: x.x
-  cudnn:
-    max_pin: x.x.x
+  cuda_driver:          # [linux]
+    max_pin: x.x        # [linux]
+  cudatoolkit:          # [linux]
+    max_pin: x.x        # [linux]
+  cudnn:                # [linux]
+    max_pin: x.x.x      # [linux]
 
 htslib:
   - 1.9
@@ -22,9 +22,9 @@ bamtools:
   - 2.4.1
 libdeflate:
   - 1.0
-cuda_driver:
-  - 375.66
-cudatoolkit:
-  - 8.0
-cudnn:
-  - 7.0.5
+cuda_driver:    # [linux]
+  - 375.66      # [linux]
+cudatoolkit:    # [linux]
+  - 8.0         # [linux]
+cudnn:          # [linux]
+  - 7.0.5       # [linux]
