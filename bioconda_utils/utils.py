@@ -16,6 +16,7 @@ from threading import Event, Thread
 from pathlib import PurePath
 
 from conda_build import api
+from conda_build.exceptions import DependencyNeedsBuildingError
 from conda.exports import VersionOrder
 import pkg_resources
 import networkx as nx
@@ -166,11 +167,15 @@ def load_all_meta(recipe, config=None, finalize=True):
     # To avoid adding a separate `bypass_env_check` alongside every `finalize`
     # parameter, just assume we always want to bypass if `finalize is True`.
     bypass_env_check = (not finalize)
-    return [meta for (meta, _, _) in api.render(recipe,
+    try:
+        return [meta for (meta, _, _) in api.render(recipe,
                                                 config=config,
                                                 finalize=finalize,
                                                 bypass_env_check=bypass_env_check,
+                                                permit_unsatisfiable_variants=True,
                                                 )]
+    except DependencyNeedsBuildingError:
+        return []
 
 
 def load_meta_fast(recipe):
