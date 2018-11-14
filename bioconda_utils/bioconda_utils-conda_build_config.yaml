@@ -23,8 +23,8 @@ bamtools:
 libdeflate:
   - 1.0
 cuda_driver:    # [linux]
-  - 375.66      # [linux]
+  - 410.73      # [linux]
 cudatoolkit:    # [linux]
-  - 8.0         # [linux]
+  - 9.2         # [linux]
 cudnn:          # [linux]
-  - 7.0.5       # [linux]
+  - 7.2.1       # [linux]
