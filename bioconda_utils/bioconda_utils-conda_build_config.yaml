@@ -22,6 +22,11 @@ bamtools:
   - 2.4.1
 libdeflate:
   - 1.0
+r_base:
+  - 3.5.1
+
+
+# HCC-specific packages
 cuda_driver:    # [linux]
   - 410.73      # [linux]
 cudatoolkit:    # [linux]
