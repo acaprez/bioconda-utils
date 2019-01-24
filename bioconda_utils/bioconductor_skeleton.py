@@ -930,13 +930,9 @@ def write_recipe(package, recipe_dir, config, force=False, bioc_version=None,
     if recursive:
         # get a list of existing packages in channels
         if skip_if_in_channels is not None:
-            for channel in skip_if_in_channels:
-                logger.info('Downloading channel repodata for %s', channel)
-                for repodata in utils.get_channel_repodata(channel):
-                    for pkg in repodata['packages'].values():
-                        name = pkg['name']
-                        if name.startswith(('r-', 'bioconductor-')):
-                            seen_dependencies.update([name])
+            for name in set(utils.RepoData().get_package_data("name", channels=skip_if_in_channels)):
+                if name.startswith(('r-', 'bioconductor-')):
+                    seen_dependencies.add(name)
 
         write_recipe_recursive(proj, seen_dependencies, recipe_dir, config,
                                force, bioc_version, pkg_version, versioned,
@@ -990,7 +986,12 @@ def write_recipe(package, recipe_dir, config, force=False, bioc_version=None,
                 mv DESCRIPTION DESCRIPTION.old
                 grep -v '^Priority: ' DESCRIPTION.old > DESCRIPTION
                 mkdir -p ~/.R
-                echo -e "CC=$CC\nFC=$FC\n$CXX=$CXX\nCXX98=$CXX\nCXX11=$CXX\nCXX14=$CXX" > ~/.R/Makevars
+                echo -e "CC=$CC
+                FC=$FC
+                CXX=$CXX
+                CXX98=$CXX
+                CXX11=$CXX
+                CXX14=$CXX" > ~/.R/Makevars
                 $R CMD INSTALL --build .'''
                 )
             )

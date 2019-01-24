@@ -2,14 +2,14 @@ import os
 import os.path as op
 from collections import defaultdict
 from jinja2.sandbox import SandboxedEnvironment
-from bioconda_utils import utils
+from bioconda_utils.utils import RepoData, load_config
 from sphinx.util import logging as sphinx_logging
 from sphinx.util import status_iterator
 from sphinx.util.parallel import ParallelTasks, parallel_available, make_chunks
 from sphinx.util.rst import escape as rst_escape
 from sphinx.util.osutil import ensuredir
 from sphinx.jinja2glue import BuiltinTemplateLoader
-from distutils.version import LooseVersion
+from conda.exports import VersionOrder
 
 # Aquire a logger
 try:
@@ -31,34 +31,6 @@ RECIPE_DIR = op.join(op.dirname(BASE_DIR), 'bioconda-recipes', 'recipes')
 OUTPUT_DIR = op.join(BASE_DIR, 'recipes')
 
 
-class RepoData(object):
-    """Load and parse packages (not recipes) available via channel"""
-    def __init__(self):
-        logger.info('Loading packages...')
-        repodata = defaultdict(lambda: defaultdict(list))
-        for platform in ['linux', 'osx']:
-            channel_packages = utils.get_channel_packages(
-                channel='bioconda', platform=platform)
-            for pkg_key in channel_packages.keys():
-                repodata[pkg_key.name][pkg_key.version].append(platform)
-        self.repodata = repodata
-        # e.g., repodata = {
-        #   'package1': {
-        #       '0.1': ['linux'],
-        #       '0.2': ['linux', 'osx'],
-        #   },
-        # }
-
-    def get_versions(self, p):
-        """Get versions available for package
-
-        Args:
-          p: package name
-
-        Returns:
-          Dictionary mapping version numbers to list of architectures
-        """
-        return self.repodata[p]
 
 
 def as_extlink_filter(text):
@@ -185,10 +157,9 @@ def generate_readme(folder, repodata, renderer):
             # Not a folder
             continue
         try:
-            LooseVersion(sf)
-        except ValueError:
-            logger.error("'{}' does not look like a proper version!"
-                         "".format(sf))
+            VersionOrder(sf)
+        except e:
+            logger.error(str(e))
             continue
         versions.append(sf)
 
@@ -212,13 +183,15 @@ def generate_readme(folder, repodata, renderer):
 
     name = metadata.name()
     versions_in_channel = repodata.get_versions(name)
+    sorted_versions = sorted(versions_in_channel.keys(), key=VersionOrder, reverse=True)
+
 
     # Format the README
     template_options = {
         'name': name,
         'about': (metadata.get_section('about') or {}),
         'extra': (metadata.get_section('extra') or {}),
-        'versions': versions_in_channel,
+        'versions': sorted_versions,
         'gh_recipes': 'https://github.com/bioconda/bioconda-recipes/tree/master/recipes/',
         'recipe_path': op.dirname(op.relpath(metadata.meta_path, RECIPE_DIR)),
         'Package': '<a href="recipes/{0}/README.html">{0}</a>'.format(name)
@@ -230,7 +203,8 @@ def generate_readme(folder, repodata, renderer):
         template_options)
 
     recipes = []
-    for version, version_info in sorted(versions_in_channel.items()):
+    for version in sorted_versions:
+        version_info = versions_in_channel[version]
         t = template_options.copy()
         t.update({
             'Linux': '<i class="fa fa-linux"></i>' if 'linux' in version_info else '',
@@ -248,7 +222,9 @@ def generate_recipes(app):
     the collected data.
     """
     renderer = Renderer(app)
+    load_config(os.path.join(os.path.dirname(__file__), "config.yaml"))
     repodata = RepoData()
+    repodata.df  # force loading
     recipes = []
     recipe_dirs = os.listdir(RECIPE_DIR)
 
@@ -262,25 +238,34 @@ def generate_recipes(app):
                 recipe_dirs,
                 'Generating package READMEs...',
                 "purple", len(recipe_dirs), app.verbosity):
+            if not op.isdir(op.join(RECIPE_DIR, folder)):
+                logger.error("Item '%s' in recipes folder is not a folder",
+                             folder)
+                continue
             recipes.extend(generate_readme(folder, repodata, renderer))
     else:
         tasks = ParallelTasks(nproc)
         chunks = make_chunks(recipe_dirs, nproc)
 
-        def process_chunk(chunk):
+        def process_chunk(data):
+            chunk, repodata = data
             _recipes = []
             for folder in chunk:
+                if not op.isdir(op.join(RECIPE_DIR, folder)):
+                    logger.error("Item '%s' in recipes folder is not a folder",
+                                 folder)
+                    continue
                 _recipes.extend(generate_readme(folder, repodata, renderer))
             return _recipes
 
-        def merge_chunk(chunk, res):
+        def merge_chunk(data, res):
             recipes.extend(res)
 
         for chunk in status_iterator(
                 chunks,
                 'Generating package READMEs with {} threads...'.format(nproc),
                 "purple", len(chunks), app.verbosity):
-            tasks.add_task(process_chunk, chunk, merge_chunk)
+            tasks.add_task(process_chunk, (chunk, repodata), merge_chunk)
         logger.info("waiting for workers...")
         tasks.join()
 
