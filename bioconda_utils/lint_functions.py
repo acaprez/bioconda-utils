@@ -84,6 +84,7 @@ def in_other_channels(recipe, meta):
         version=meta.get_value("package/version")
     ))
     channels.discard('bioconda')
+    channels.discard('hcc')
     if channels:
         return {
             'exists_in_channels': channels,
