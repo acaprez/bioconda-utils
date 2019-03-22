@@ -85,6 +85,7 @@ def in_other_channels(recipe, meta):
     ))
     channels.discard('bioconda')
     channels.discard('hcc')
+    channels.discard('t/{}/hcc'.format(os.getenv("PRIVATE_PACKAGE_TOKEN")))
     if channels:
         return {
             'exists_in_channels': channels,
