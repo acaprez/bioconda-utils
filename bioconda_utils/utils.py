@@ -10,6 +10,7 @@ import shutil
 import contextlib
 from collections import Counter, Iterable, defaultdict, namedtuple
 from itertools import product, chain, groupby
+from functools import partial
 import logging
 import datetime
 from threading import Event, Thread
@@ -17,12 +18,13 @@ from typing import Sequence
 from pathlib import PurePath
 import json
 import warnings
+from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 
 from conda_build import api
 from conda_build.exceptions import DependencyNeedsBuildingError
 from conda.exports import VersionOrder
 import pkg_resources
-import networkx as nx
 import requests
 from jsonschema import validate
 from distutils.version import LooseVersion
@@ -35,6 +37,10 @@ import tqdm as _tqdm
 import asyncio
 import aiohttp
 import backoff
+from boltons.funcutils import FunctionBuilder
+
+
+logger = logging.getLogger(__name__)
 
 
 class TqdmHandler(logging.StreamHandler):
@@ -51,26 +57,26 @@ class TqdmHandler(logging.StreamHandler):
 
 
 def tqdm(*args, **kwargs):
-    """Wrapper around TQDM handling disable"""
-    enable = (sys.stderr.isatty()
-              and os.environ.get("TERM", "") != "dumb"
-              and os.environ.get("CIRCLECI", "") != "true")
-    kwargs['disable'] = not enable
+    """Wrapper around TQDM handling disable
+
+    Logging is disabled if:
+
+    - ``TERM`` is set to ``dumb``
+    - ``CIRCLECI`` is set to ``true``
+    - the effective log level of the is lower than set via ``loglevel``
+
+    Args:
+      loglevel: logging loglevel (the number, so logging.INFO)
+      logger: local logger (in case it has different effective log level)
+    """
+    term_ok = (sys.stderr.isatty()
+               and os.environ.get("TERM", "") != "dumb"
+               and os.environ.get("CIRCLECI", "") != "true")
+    loglevel_ok = (kwargs.get('logger', logger).getEffectiveLevel()
+                   <= kwargs.get('loglevel', logging.INFO))
+    kwargs['disable'] = not (term_ok and loglevel_ok)
     return _tqdm.tqdm(*args, **kwargs)
 
-
-log_stream_handler = TqdmHandler()
-log_stream_handler.setFormatter(ColoredFormatter(
-        "%(asctime)s %(log_color)sBIOCONDA %(levelname)s%(reset)s %(message)s",
-        datefmt="%H:%M:%S",
-        reset=True,
-        log_colors={
-            'DEBUG': 'cyan',
-            'INFO': 'green',
-            'WARNING': 'yellow',
-            'ERROR': 'red',
-            'CRITICAL': 'red',
-        }))
 
 
 def ensure_list(obj):
@@ -86,16 +92,64 @@ def ensure_list(obj):
     return [obj]
 
 
-def setup_logger(name, loglevel=None):
+def wraps(func):
+    """Custom wraps() function for decorators
+
+    This one differs from functiools.wraps and boltons.funcutils.wraps in
+    that it allows *adding* keyword arguments to the function signature.
+
+    >>> def decorator(func):
+    >>>   @wraps(func)
+    >>>   def wrapper(*args, extra_param=None, **kwargs):
+    >>>      print("Called with extra_param=%s" % extra_param)
+    >>>      func(*args, **kwargs)
+    >>>   return wrapper
+    >>>
+    >>> @decorator()
+    >>> def test(arg1, arg2, arg3='default'):
+    >>>     pass
+    >>>
+    >>> test('val1', 'val2', extra_param='xyz')
+    """
+
+    fb = FunctionBuilder.from_func(func)
+    def wrapper_wrapper(wrapper_func):
+        fb_wrapper = FunctionBuilder.from_func(wrapper_func)
+        fb.kwonlyargs += fb_wrapper.kwonlyargs
+        fb.kwonlydefaults.update(fb_wrapper.kwonlydefaults)
+        fb.body = 'return _call(%s)' % fb.get_invocation_str()
+        execdict = dict(_call=wrapper_func, _func=func)
+        fully_wrapped = fb.get_func(execdict)
+        fully_wrapped.__wrapped__ = func
+        return fully_wrapped
+
+    return wrapper_wrapper
+
+
+def setup_logger(name, loglevel=None, prefix="BIOCONDA ",
+                 msgfmt=("%(asctime)s"
+                         "%(log_color)s{prefix}%(levelname)s%(reset)s "
+                         "%(message)s"),
+                 datefmt="%H:%M:%S "):
     logger = logging.getLogger(name)
     logger.propagate = False
     if loglevel:
         logger.setLevel(getattr(logging, loglevel.upper()))
+
+    log_stream_handler = TqdmHandler()
+    log_stream_handler.setFormatter(ColoredFormatter(
+        msgfmt.format(prefix=prefix),
+        datefmt=datefmt,
+        reset=True,
+        log_colors={
+            'DEBUG': 'cyan',
+            'INFO': 'green',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'red',
+        }))
     logger.addHandler(log_stream_handler)
     return logger
-
-
-logger = setup_logger(__name__)
 
 
 class JinjaSilentUndefined(jinja2.Undefined):
@@ -242,26 +296,28 @@ def load_all_meta(recipe, config=None, finalize=True):
 
 
 
-def load_meta_fast(recipe, env=None):
+def load_meta_fast(recipe: str, env=None):
     """
     Given a package name, find the current meta.yaml file, parse it, and return
     the dict.
 
-    Parameters
-    ----------
-    recipe : str
-        Path to recipe (directory containing the meta.yaml file)
+    Args:
+      recipe: Path to recipe (directory containing the meta.yaml file)
+      env: Optional variables to expand
 
-    env: Optional[dict]
-        Variables to expand
+    Returns:
+      Tuple of original recipe string and rendered dict
     """
     if not env:
         env = {}
 
-    pth = os.path.join(recipe, 'meta.yaml')
-    template = jinja_silent_undef.from_string(open(pth, 'r', encoding='utf-8').read())
-    meta = yaml.load(template.render(env))
-    return meta
+    try:
+        pth = os.path.join(recipe, 'meta.yaml')
+        template = jinja_silent_undef.from_string(open(pth, 'r', encoding='utf-8').read())
+        meta = yaml.safe_load(template.render(env))
+        return (meta, recipe)
+    except Exception:
+        raise ValueError('Problem inspecting {0}'.format(recipe))
 
 
 def load_conda_build_config(platform=None, trim_skip=True):
@@ -422,7 +478,7 @@ class EnvMatrix:
         """
         if isinstance(env, str):
             with open(env) as f:
-                self.env = yaml.load(f)
+                self.env = yaml.safe_load(f)
         else:
             self.env = env
         for key, val in self.env.items():
@@ -488,93 +544,33 @@ def get_deps(recipe=None, meta=None, build=True):
     return all_deps
 
 
-def get_dag(recipes, config, blacklist=None, restrict=True):
-    """
-    Returns the DAG of recipe paths and a dictionary that maps package names to
-    lists of recipe paths to all defined versions of the package.  defined
-    versions.
-
-    Parameters
-    ----------
-    recipes : iterable
-        An iterable of recipe paths, typically obtained via `get_recipes()`
-
-    blacklist : set
-        Package names to skip
-
-    restrict : bool
-        If True, then dependencies will be included in the DAG only if they are
-        themselves in `recipes`. Otherwise, include all dependencies of
-        `recipes`.
-
-    Returns
-    -------
-    dag : nx.DiGraph
-        Directed graph of packages -- nodes are package names; edges are
-        dependencies (both run and build dependencies)
-
-    name2recipe : dict
-        Dictionary mapping package names to recipe paths. These recipe path
-        values are lists and contain paths to all defined versions.
-    """
-    logger.info("Generating DAG")
-    recipes = list(recipes)
-    metadata = []
-    for i, recipe in enumerate(sorted(recipes)):
-        try:
-            meta = load_meta_fast(recipe)
-            metadata.append((meta, recipe))
-            if i % 100 == 0:
-                logger.info("Inspected {} of {} recipes".format(i, len(recipes)))
-        except Exception:
-            raise ValueError('Problem inspecting {0}'.format(recipe))
-    if blacklist is None:
-        blacklist = set()
-
-    # name2recipe is meta.yaml's package:name mapped to the recipe path.
-    #
-    # A name should map to exactly one recipe. It is possible for multiple
-    # names to map to the same recipe, if the package name somehow depends on
-    # the environment.
-    #
-    # Note that this may change once we support conda-build 3.
-    name2recipe = defaultdict(set)
-    for meta, recipe in metadata:
-        name = meta["package"]["name"]
-        if name not in blacklist:
-            name2recipe[name].update([recipe])
-
-    def get_deps(meta, sec):
-        reqs = meta.get("requirements")
-        if not reqs:
-            return []
-        deps = reqs.get(sec)
-        if not deps:
-            return []
-        return [dep.split()[0] for dep in deps if dep]
+_max_threads = 1
 
 
-    def get_inner_deps(dependencies):
-        dependencies = list(dependencies)
-        for dep in dependencies:
-            if dep in name2recipe or not restrict:
-                yield dep
+def set_max_threads(n):
+    global _max_threads
+    _max_threads = n
 
-    dag = nx.DiGraph()
-    dag.add_nodes_from(meta["package"]["name"]
-                       for meta, recipe in metadata)
-    for meta, recipe in metadata:
-        name = meta["package"]["name"]
-        dag.add_edges_from(
-            (dep, name)
-            for dep in set(chain(
-                get_inner_deps(get_deps(meta, "build")),
-                get_inner_deps(get_deps(meta, "host")),
-                get_inner_deps(get_deps(meta, "run")),
-            ))
+
+def threads_to_use():
+    """Returns the number of cores we are allowed to run on"""
+    if hasattr(os, 'sched_getaffinity'):
+        cores = len(os.sched_getaffinity(0))
+    else:
+        cores = os.cpu_count()
+    return min(_max_threads, cores)
+
+
+def parallel_iter(func, items, desc, *args, **kwargs):
+    pfunc = partial(func, *args, **kwargs)
+    with Pool(threads_to_use()) as pool:
+        yield from tqdm(
+            pool.imap_unordered(pfunc, items),
+            desc=desc,
+            total=len(items)
         )
 
-    return dag, name2recipe
+
 
 
 def get_recipes(recipe_folder, package="*"):
@@ -747,14 +743,14 @@ def newly_unblacklisted(config_file, recipe_folder, git_range):
     # config file and then all the original blacklists it had listed
     previous = set()
     orig_config = file_from_commit(git_range[0], config_file)
-    for bl in yaml.load(orig_config)['blacklists']:
+    for bl in yaml.safe_load(orig_config)['blacklists']:
         with open('.tmp.blacklist', 'w', encoding='utf8') as fout:
             fout.write(file_from_commit(git_range[0], bl))
         previous.update(get_blacklist(['.tmp.blacklist'], recipe_folder))
         os.unlink('.tmp.blacklist')
 
     current = get_blacklist(
-        yaml.load(
+        yaml.safe_load(
             file_from_commit(git_range[1], config_file))['blacklists'],
         recipe_folder)
     results = previous.difference(current)
@@ -924,11 +920,11 @@ def validate_config(config):
         directly.
     """
     if not isinstance(config, dict):
-        config = yaml.load(open(config))
+        config = yaml.safe_load(open(config))
     fn = pkg_resources.resource_filename(
         'bioconda_utils', 'config.schema.yaml'
     )
-    schema = yaml.load(open(fn))
+    schema = yaml.safe_load(open(fn))
     validate(config, schema)
 
 
@@ -950,7 +946,7 @@ def load_config(path):
     else:
         def relpath(p):
             return os.path.join(os.path.dirname(path), p)
-        config = yaml.load(open(path))
+        config = yaml.safe_load(open(path))
 
     def get_list(key):
         # always return empty list, also if NoneType is defined in yaml
@@ -1103,7 +1099,15 @@ class AsyncRequests:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-        task = asyncio.ensure_future(cls._async_fetch(urls, descs, cb, datas))
+        if loop.is_running():
+            logger.warning("Running AsyncRequests.fetch from within running loop")
+            # Workaround the fact that asyncio's loop is marked as not-reentrant
+            # (it is apparently easy to patch, but not desired by the devs,
+            with ThreadPool(1) as pool:
+                res = pool.apply(cls.fetch, (urls, descs, cb, datas))
+            return res
+
+        task = asyncio.ensure_future(cls.async_fetch(urls, descs, cb, datas))
 
         try:
             loop.run_until_complete(task)
@@ -1115,7 +1119,7 @@ class AsyncRequests:
         return task.result()
 
     @classmethod
-    async def _async_fetch(cls, urls, descs, cb, datas):
+    async def async_fetch(cls, urls, descs, cb, datas):
         conn = aiohttp.TCPConnector(limit_per_host=cls.CONNECTIONS_PER_HOST)
         async with aiohttp.ClientSession(
                 connector=conn,
@@ -1213,7 +1217,7 @@ class RepoData:
     REPODATA_LABELED_URL = 'https://conda.anaconda.org/{channel}/label/{label}/{subdir}/repodata.json'
     REPODATA_DEFAULTS_URL = 'https://repo.anaconda.com/pkgs/main/{subdir}/repodata.json'
 
-    _load_columns = ['build', 'build_number', 'name', 'version']
+    _load_columns = ['build', 'build_number', 'name', 'version', 'depends']
 
     #: Columns available in internal dataframe
     columns = _load_columns + ['channel', 'subdir', 'platform']
@@ -1221,6 +1225,9 @@ class RepoData:
     platforms = ['linux', 'osx', 'noarch']
     # config object
     config = None
+
+    cache_file = None
+    _df = None
 
     @classmethod
     def register_config(cls, config):
@@ -1235,10 +1242,6 @@ class RepoData:
             RepoData.__instance = object.__new__(cls)
         return RepoData.__instance
 
-    def __init__(self):
-        self.cache_file = None
-        self._df = None
-
     def set_cache(self, cache):
         if self._df is not None:
             warnings.warn("RepoData cache set after first use", BiocondaUtilsWarning)
@@ -1252,6 +1255,11 @@ class RepoData:
 
     @property
     def df(self):
+        """Internal Pandas DataFrame object
+
+        Try not to use this ... the point of this class is to be able to
+        change the structure in which the data is held.
+        """
         if self._df is None:
             self._df = self._load_channel_dataframe()
         return self._df
@@ -1270,7 +1278,7 @@ class RepoData:
     def _load_channel_dataframe(self):
         if self.cache_file is not None and os.path.exists(self.cache_file):
             logger.info("Loading repodata from cache %s", self.cache_file)
-            return pd.read_table(self.cache_file)
+            return pd.read_pickle(self.cache_file)
 
         repos = list(product(self.channels, self.platforms))
         urls = [self._make_repodata_url(c, p) for c, p in repos]
@@ -1290,9 +1298,12 @@ class RepoData:
 
         dfs = AsyncRequests.fetch(urls, descs, to_dataframe, repos)
         res = pd.concat(dfs)
+        for col in ('channel', 'platform', 'subdir', 'name', 'version', 'build'):
+            res[col] = res[col].astype('category')
+        res = res.reset_index(drop=True)
 
         if self.cache_file is not None:
-            res.to_csv(self.cache_file, sep='\t')
+            res.to_pickle(self.cache_file)
 
         return res
 
@@ -1341,10 +1352,11 @@ class RepoData:
             return max(VersionOrder(v) for v in x)
         vers = packages.groupby('name').agg(max_vers)
 
-    def get_package_data(self, key, channels=None, name=None, version=None,
-                         build_number=None, platform=None, native=False):
+    def get_package_data(self, key=None, channels=None, name=None, version=None,
+                         build_number=None, platform=None, build=None, native=False):
         """Get **key** for each package in **channels**
 
+        If **key** is not give, returns bool whether there are matches.
         If **key** is a string, returns list of strings.
         If **key** is a list of string, returns tuple iterator.
         """
@@ -1355,12 +1367,17 @@ class RepoData:
             version = str(version)
 
         df = self.df
+        # We iteratively drill down here, starting with the (probably)
+        # most specific columns. Filtering this way on a large data frame
+        # is much faster than executing the comparisons for all values
+        # every time, in particular if we are looking at a specific package.
         for col, val in (
-                ('name', name),
-                ('channel', channels),
-                ('version', version),
-                ('build_number', build_number),
-                ('platform', platform),
+                ('name', name),         # thousands of different values
+                ('build', build),       # build string should vary a lot
+                ('version', version),   # still pretty good variety
+                ('channel', channels),  # 3 values
+                ('platform', platform), # 3 values
+                ('build_number', build_number), # most values 0
         ):
             if val is None:
                 continue
@@ -1369,6 +1386,8 @@ class RepoData:
             else:
                 df = df[df[col] == val]
 
+        if key is None:
+            return not df.empty
         if isinstance(key, str):
             return list(df[key])
         return df[key].itertuples(index=False)
