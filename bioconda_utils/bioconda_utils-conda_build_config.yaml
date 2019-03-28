@@ -33,3 +33,12 @@ cudatoolkit:    # [linux]
   - 9.2         # [linux]
 cudnn:          # [linux]
   - 7.2.1       # [linux]
+
+mro:
+  - 3.4
+  - 3.5
+
+pin_run_as_build:
+  mro:
+    min_pin: x.x.x
+    max_pin: x.x
