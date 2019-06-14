@@ -35,7 +35,6 @@ cudnn:          # [linux]
   - 7.2.1       # [linux]
 
 mro:
-  - 3.4
   - 3.5
 
 pin_run_as_build:
