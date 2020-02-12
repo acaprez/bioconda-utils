@@ -1,8 +1,14 @@
+"""
+Construction and Manipulation of Package/Recipe Graphs
+"""
+
 import logging
-import networkx as nx
 
 from collections import defaultdict
+from fnmatch import fnmatch
 from itertools import chain
+
+import networkx as nx
 
 from . import utils
 
@@ -67,7 +73,6 @@ def build(recipes, config, blacklist=None, restrict=True):
             return []
         return [dep.split()[0] for dep in deps if dep]
 
-
     def get_inner_deps(dependencies):
         dependencies = list(dependencies)
         for dep in dependencies:
@@ -84,7 +89,6 @@ def build(recipes, config, blacklist=None, restrict=True):
             for dep in set(chain(
                 get_inner_deps(get_deps(meta, "build")),
                 get_inner_deps(get_deps(meta, "host")),
-                get_inner_deps(get_deps(meta, "run")),
             ))
         )
 
@@ -114,11 +118,13 @@ def build_from_recipes(recipes):
     return dag
 
 
-def filter_recipe_dag(dag, names):
-    name_set = set(names)
+def filter_recipe_dag(dag, include, exclude):
+    """Reduces **dag** to packages in **names** and their requirements"""
     nodes = set()
     for recipe in dag:
-        if recipe.reldir in name_set and recipe not in nodes:
+        if (recipe not in nodes
+            and any(fnmatch(recipe.reldir, p) for p in include)
+            and not any(fnmatch(recipe.reldir, p) for p in exclude)):
             nodes.add(recipe)
             nodes |= nx.ancestors(dag, recipe)
     return nx.subgraph(dag, nodes)

@@ -36,7 +36,7 @@
    :versions: {{ package.versions | join(", ") }}
    {% for dependency in package.depends %}
    :depends {{dependency[0]}}: {{dependency[1]}}
-   {% endfor %}
+   {%- endfor %}
    :requirements:
 
    .. rubric:: Installation
@@ -57,6 +57,7 @@
 
 
 .. |downloads_{{package.name}}| image:: https://img.shields.io/conda/dn/bioconda/{{package.name}}.svg?style=flat
+   :target: https://anaconda.org/bioconda/{{package.name}}
    :alt:   (downloads)
 .. |docker_{{package.name}}| image:: https://quay.io/repository/biocontainers/{{ name }}/status
    :target: https://quay.io/repository/biocontainers/{{ name }}

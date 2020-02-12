@@ -5,8 +5,6 @@ import datetime
 import os
 import sys
 
-import sphinx_rtd_theme
-
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -23,13 +21,20 @@ def setup(app):
 #needs_sphinx = '1.0'
 
 extensions = [
-    'generate_docs',
+    'bioconda_utils.sphinxext',
+
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.extlinks',
+    'sphinx.ext.autosectionlabel',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
+    'sphinx_autodoc_typehints',  # must be loaded after napoleon
+    'celery.contrib.sphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -61,7 +66,7 @@ exclude_patterns = ['build']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
-#default_role = None
+default_role = "any"
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
@@ -148,6 +153,8 @@ html_context = {
     'extra_nav_items': {
         'Bioconda @ Github' : 'https://github.com/bioconda/bioconda-recipes',
         'Recipe Index': 'conda-recipe_index',
+        '<img alt="Gitter" src="https://img.shields.io/gitter/room/bioconda/Lobby.svg">':
+        'https://gitter.im/bioconda/Lobby'
     }
 }
 
@@ -281,10 +288,50 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'conda.io': ('https://conda.io/en/latest', None),
+    'conda-build': ('https://conda.io/projects/conda-build/en/latest/', None),
+    'conda': ('https://conda.io/projects/conda/en/latest/', None),
+    'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
+}
 
 # We are using the `extlinks` extension to render links for identifiers:
 extlinks = {
-   'biotools': ('https://bio.tools/%s', ''),
-   'doi': ('https://doi.org/%s', ''),
+    'biotools': ('https://bio.tools/%s', ''),
+    'doi': ('https://doi.org/%s', ''),
+    'debian': ('https://tracker.debian.org/pkg/%s', ''),
+}
+
+# add document name before automatic section title reference
+autosectionlabel_prefix_document = True
+
+# autogenerate autodoc stubs via autosummary
+autosummary_generate = True
+
+# combine docstrings for __init__ and class:
+autoclass_content = "both"
+
+# keep order from file (options: alphabetical, groupwise (by type), source)
+autodoc_member_order = "source"
+
+# default flags for autodoc statements
+autodoc_default_flags = ['members', 'show-inheritance']
+
+# autodoc_type_hints: set typing.TYPE_CHECKING to True while building docs
+set_type_checking_flag = True
+
+# Bioconda Sphinx Extension Config:
+# Git Url for repository containing recipes
+bioconda_repo_url = 'https://github.com/bioconda/bioconda-recipes.git'
+
+# Path within that repository to folder containing recipes
+# bioconda_recipes_path = 'recipes'
+
+# Path within that repository to bioconda config file
+# bioconda_config_file = 'config.yml'
+
+# Formats for linkout to other channels
+bioconda_other_channels = {
+    'conda-forge': 'https://github.com/conda-forge/{}-feedstock'
 }
