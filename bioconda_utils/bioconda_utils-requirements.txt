@@ -62,3 +62,7 @@ aiohttp-session=2.7.*  # session management
 aioredis=1.2.*         # session store, database
 cryptography=2.*       # encryption (for cookies)
 markdown=3.1.*         # md->html
+
+# HCC changes
+# https://github.com/gitpython-developers/GitPython/issues/241
+gitdb2=3.0.0
