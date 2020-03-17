@@ -70,7 +70,7 @@ class GitHandlerBase():
     """
     def __init__(self, repo: git.Repo,
                  dry_run: bool,
-                 home='bioconda/bioconda-recipes',
+                 home='hcc/hcc-conda-recipes',
                  fork=None,
                  allow_dirty=False) -> None:
         #: GitPython Repo object representing our repository
