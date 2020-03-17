@@ -4,6 +4,7 @@ These checks verify consistency with the repository (blacklisting,
 other channels, existing versions).
 """
 
+import os
 from .. import utils
 from . import LintCheck, ERROR, WARNING, INFO
 
@@ -23,7 +24,7 @@ class in_other_channels(LintCheck):
     """
     def check_recipe(self, recipe):
         channels = utils.RepoData().get_package_data(key="channel", name=recipe.name)
-        if set(channels) - set(('bioconda',)):
+        if set(channels) - set(('hcc',)) - set(('t/{}/hcc'.format(os.getenv("PRIVATE_PACKAGE_TOKEN")),)):
             self.message(section='package/name')
 
 
