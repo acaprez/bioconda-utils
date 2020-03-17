@@ -148,7 +148,7 @@ def get_recipes_to_build(git_range: Tuple[str], recipe_folder: str) -> List[str]
         sys.exit("--git-range may have only one or two arguments")
     other = git_range[0]
     ref = "HEAD" if len(git_range) == 1 else git_range[1]
-    repo = BiocondaRepo(recipe_folder)
+    repo = BiocondaRepo(recipe_folder,home='hcc/hcc-conda-recipes')
     return repo.get_recipes_to_build(ref, other)
 
 
