@@ -163,7 +163,7 @@ class RecipeBuilder(object):
         keep_image=False,
         build_image=False,
         image_build_dir=None,
-        docker_base_image='bioconda/bioconda-utils-build-env:latest'
+        docker_base_image='bioconda/bioconda-utils-build-env:dep-gitpython-3.0.8'
     ):
         """
         Class to handle building a custom docker container that can be used for
