@@ -29,9 +29,9 @@ python:
 
 # HCC specific packages
 cuda_driver:    # [linux]
-  - 410.73      # [linux]
+  - 440.64      # [linux]
 cudatoolkit:    # [linux]
-  - 10.0        # [linux]
+  - 10.2        # [linux]
 cudnn:          # [linux]
   - 7.6.5       # [linux]
 mro:
