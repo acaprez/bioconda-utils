@@ -50,7 +50,6 @@ CRAN_X_PACKAGES = set(["rgl", "tsdist", "tsclust", "plot3drgl", "pals", "longitu
 # There can be multiple resulting packages, all of which should then
 # be included in recipes
 SysReqs = {'and egrep are required for some functionalities': ['grep'],
-           'BLAS': ['openblas'],
            'bowtie': ['bowtie2'],
            'bowtie and samtools are required for some functionalities': ['bowtie2', 'samtools'],
            'clustalo': ['clustalo'],
@@ -898,6 +897,13 @@ class BioCProjectPage(object):
 
         DEPENDENCIES = sorted(self.dependencies)
 
+        # Handle libblas and liblapack, which all compiled packages
+        # are assumed to need
+        additional_host_deps = []
+        if self.linkingto != [] or len(set(['c', 'cxx', 'fortran']).intersection(self._cb3_build_reqs.keys())) > 0:
+            additional_host_deps.append('libblas')
+            additional_host_deps.append('liblapack')
+
         additional_run_deps = []
         if self.is_data_package:
             additional_run_deps.append('curl')
@@ -927,7 +933,7 @@ class BioCProjectPage(object):
                     # object and tries to make a shortcut, causing an error in
                     # decoding unicode. Possible pyaml bug? Anyway, this fixes
                     # it.
-                    ('host', DEPENDENCIES[:]),
+                    ('host', DEPENDENCIES[:] + additional_host_deps),
                     ('run', DEPENDENCIES[:] + additional_run_deps),
                 )),
             ),
