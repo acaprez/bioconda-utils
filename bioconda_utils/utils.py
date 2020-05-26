@@ -413,15 +413,11 @@ def load_all_meta(recipe, config=None, finalize=True):
     # To avoid adding a separate `bypass_env_check` alongside every `finalize`
     # parameter, just assume we always want to bypass if `finalize is True`.
     bypass_env_check = (not finalize)
-    try:
-        return [meta for (meta, _, _) in api.render(recipe,
+    return [meta for (meta, _, _) in api.render(recipe,
                                                 config=config,
                                                 finalize=finalize,
                                                 bypass_env_check=bypass_env_check,
-                                                permit_unsatisfiable_variants=True,
                                                 )]
-    except DependencyNeedsBuildingError:
-        return []
 
 
 
