@@ -20,6 +20,7 @@ htslib:
 bamtools:
   - 2.5.1
 r_base:
+  - 3.6
   - 4.0
 python:
   - 2.7.* *_cpython
