@@ -35,8 +35,16 @@ import backoff
 import yaml
 import jinja2
 from jinja2 import Environment, PackageLoader
+
+# FIXME(upstream): For conda>=4.7.0 initialize_logging is (erroneously) called
+#                  by conda.core.index.get_index which messes up our logging.
+# => Prevent custom conda logging init before importing anything conda-related.
+import conda.gateways.logging
+conda.gateways.logging.initialize_logging = lambda: None
+
 from conda_build import api
 from conda.exports import VersionOrder
+
 from jsonschema import validate
 from colorlog import ColoredFormatter
 from boltons.funcutils import FunctionBuilder
@@ -792,11 +800,21 @@ def get_recipes(recipe_folder, package="*", exclude=None):
                      recipe_folder, package, p)
         path = os.path.join(recipe_folder, p)
         for new_dir in glob.glob(path):
+            meta_yaml_found_or_excluded = False
             for dir_path, dir_names, file_names in os.walk(new_dir):
                 if any(fnmatch.fnmatch(dir_path[len(recipe_folder):], pat) for pat in exclude):
+                    meta_yaml_found_or_excluded = True
                     continue
                 if "meta.yaml" in file_names:
+                    meta_yaml_found_or_excluded = True
                     yield dir_path
+            if not meta_yaml_found_or_excluded and os.path.isdir(new_dir):
+                logger.warn(
+                    "No meta.yaml found in %s."
+                    " If you want to ignore this directory, add it to the blacklist.",
+                    new_dir
+                )
+                yield new_dir
 
 
 def get_latest_recipes(recipe_folder, config, package="*"):
@@ -1001,6 +1019,19 @@ def check_recipe_skippable(recipe, check_channels):
     are already in channel_packages.
     """
     platform, metas = _load_platform_metas(recipe, finalize=False)
+    # The recipe likely defined skip: True
+    if not metas:
+        return True
+    # If on CI, handle noarch.
+    if os.environ.get('CI', None) == 'true':
+        first_meta = metas[0]
+        if first_meta.get_value('build/noarch'):
+            if platform != 'linux':
+                logger.debug('FILTER: only building %s on '
+                             'linux because it defines noarch.',
+                             recipe)
+                return True
+
     packages =  set(
         (meta.name(), meta.version(), int(meta.build_number() or 0))
         for meta in metas
@@ -1020,7 +1051,13 @@ def check_recipe_skippable(recipe, check_channels):
         (meta.name(), meta.version(), int(meta.build_number() or 0), _meta_subdir(meta))
         for meta in metas
     )
-    return num_new_pkg_builds == num_existing_pkg_builds
+    if num_new_pkg_builds == num_existing_pkg_builds:
+        logger.info(
+            'FILTER: not building recipe %s because '
+            'the same number of builds are in channel(s) and it is not forced.',
+            recipe)
+        return True
+    return False
 
 
 def _filter_existing_packages(metas, check_channels):
@@ -1057,26 +1094,12 @@ def get_package_paths(recipe, check_channels, force=False):
     if not force:
         if check_recipe_skippable(recipe, check_channels):
             # NB: If we skip early here, we don't detect possible divergent builds.
-            logger.info(
-                'FILTER: not building recipe %s because '
-                'the same number of builds are in channel(s) and it is not forced.',
-                recipe)
             return []
     platform, metas = _load_platform_metas(recipe, finalize=True)
 
     # The recipe likely defined skip: True
     if not metas:
         return []
-
-    # If on CI, handle noarch.
-    if os.environ.get('CI', None) == 'true':
-        first_meta = metas[0]
-        if first_meta.get_value('build/noarch'):
-            if platform != 'linux':
-                logger.debug('FILTER: only building %s on '
-                             'linux because it defines noarch.',
-                             recipe)
-                return []
 
     new_metas, existing_metas, divergent_builds = (
         _filter_existing_packages(metas, check_channels))

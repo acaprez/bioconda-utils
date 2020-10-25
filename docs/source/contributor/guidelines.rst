@@ -148,6 +148,22 @@ include them in the PR. One shortcut is to use ``anaconda search -t conda
 recipes can give some clues into building a version of the dependency for
 bioconda.
 
+
+.. _test_dependencies:
+
+Test Dependencies
+~~~~~~~~~~~~~~~~~
+
+During a Bioconda package build, the stringent ``mulled-build`` test
+runs the tests listed in the ``test`` section of the recipe's ``meta.yaml``
+file in an environment which does not have the dependencies listed in the
+``test: requires:`` section. Because of this, all tests in that section
+must only rely on runtime dependencies or the build will fail.
+Tests that rely on the test-time dependencies listed in ``test: requires:`` should be put in
+the ``run_test.sh`` file in the same directory as the ``meta.yaml`` file. This file is
+picked up and run by the standard build that occurs before the ``mulled-build``, but is
+not passed on to and run by the ``mulled-build``.
+
 .. _patching:
 
 Patching
@@ -299,7 +315,7 @@ and a post-link script (see https://github.com/bioconda/bioconda-utils/pull/169
 for details). Typically the resulting recipe can be used without modification,
 though dependencies may also need recipes. Recipes for dependencies with an
 ``r-`` prefix should be created at Conda-Forge unless the CRAN package has a
-Bioconductor dependency; see `guidelines:R (CRAN)` above.
+Bioconductor dependency; see :ref:`r-cran` above.
 
 - typical bioconductor recipe: `bioconductor-limma/meta.yaml
   <https://github.com/bioconda/bioconda-recipes/tree/master/recipes/bioconductor-limma>`_
@@ -590,7 +606,7 @@ cluttering the output in the CircleCI build environment.
 Link and unlink scripts (pre- and post- install hooks)
 ------------------------------------------------------
 It is possible to include `scripts
-<https://conda.io/docs/user-guide/tasks/build-packages/link-scripts.html>`_ that are
+<https://docs.conda.io/projects/conda-build/en/latest/resources/link-scripts.html#adding-pre-link-post-link-and-pre-unlink-scripts>`_ that are
 executed before or after installing a package, or before uninstalling
 a package. These scripts can be helpful for alerting the user that manual
 actions are required after adding or removing a package. For example,
