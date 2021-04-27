@@ -12,6 +12,9 @@ import logging
 import shutil
 from textwrap import dedent
 
+from conda_build import metadata
+
+from bioconda_utils import __version__
 from bioconda_utils import utils
 from bioconda_utils import pkg_test
 from bioconda_utils import docker_utils
@@ -34,7 +37,7 @@ TEST_LABEL = 'bioconda-utils-test'
 # docker, once without). On OSX, only the non-docker runs.
 
 # Docker ref for build container
-DOCKER_BASE_IMAGE = "bioconda/bioconda-utils-test-env:latest"
+DOCKER_BASE_IMAGE = "quay.io/bioconda/bioconda-utils-test-env-cos7:latest"
 
 SKIP_DOCKER_TESTS = sys.platform.startswith('darwin')
 SKIP_NOT_OSX = not sys.platform.startswith('darwin')
@@ -226,6 +229,30 @@ def test_multi_build(multi_build):
     for v in multi_build.values():
         for pkg in v:
             assert os.path.exists(pkg)
+
+
+@pytest.mark.skipif(SKIP_DOCKER_TESTS, reason='skipping on osx')
+def test_docker_bioconda_utils_version():
+    """
+    Test for same bioconda-utils version in build container.
+    """
+    docker_builder = docker_utils.RecipeBuilder(
+        build_script_template=('''
+#! /usr/bin/env bash
+python -c '
+import bioconda_utils
+with open("{self.container_staging}/version", "w") as version_file:
+    version_file.write(bioconda_utils.__version__)
+'
+'''
+        ),
+        docker_base_image=DOCKER_BASE_IMAGE,
+    )
+    temp_dir = docker_builder.pkg_dir
+    # Set recipe_dir to any temporary directory, e.g., docker_builder.pkg_dir.
+    docker_builder.build_recipe(temp_dir, build_args='', env={})
+    with open(os.path.join(temp_dir, 'version')) as container_version_file:
+        assert container_version_file.read() == __version__
 
 
 @pytest.mark.skipif(SKIP_DOCKER_TESTS, reason='skipping on osx')
@@ -521,9 +548,14 @@ def test_built_package_paths():
         """, from_string=True)
     r.write_recipes()
 
+    # Newer conda-build versions add the channel_targets and target_platform to the hash
+    platform = 'linux' if sys.platform == 'linux' else 'osx'
+    d = {"channel_targets": "bioconda main", "target_platform": "{}-64".format(platform)}
+    h = metadata._hash_dependencies(d, 7)
+
     assert os.path.basename(
         utils.built_package_paths(r.recipe_dirs['one'])[0]
-    ) == 'one-0.1-py36_0.tar.bz2'
+    ) == 'one-0.1-py36{}_0.tar.bz2'.format(h)
 
 
 def test_string_or_float_to_integer_python():
