@@ -64,6 +64,7 @@ cuda_driver:    # [linux]
 cudatoolkit:    # [linux]
   - 11.2        # [linux]
 cudnn:          # [linux]
+  - undefined
   - 8.1         # [linux]
 mro:
   - 3.5
