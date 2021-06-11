@@ -59,15 +59,20 @@ channel_targets:
   - hcc main
 
 # HCC specific packages
-cuda_driver:    # [linux]
+cuda_driver:
   - 460.67      # [linux]
-cudatoolkit:    # [linux]
-  - 11.2        # [linux]
-cudnn:          # [linux]
-  - undefined
-  - 8.1         # [linux]
+cuda_compiler_version:
+  - 11.2                       # [linux64]
+cudnn:
+  - 8
+cudatoolkit:
+  - 11.2
 mro:
   - 3.5
+
+zip_keys:
+- - cuda_compiler_version
+  - cudnn
 
 pin_run_as_build:
   mro:
