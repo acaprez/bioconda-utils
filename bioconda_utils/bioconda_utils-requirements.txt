@@ -4,15 +4,16 @@
 
 # basics
 python>=3.7
-conda=4.8.4
-conda-build=3.21.4
+conda=4.12.0
+boa=0.9.*
+conda-build=3.21.8
 conda-verify=3.1.*
 argh=0.26.*          # CLI
 colorlog=3.1.*       # Logging
 tqdm>=4.26           # Progress monitor
 ruamel_yaml=0.15.*   # Recipe YAML parsing
 pyaml=17.12.*        # Faster YAML parser (deprecate?)
-networkx=1.11
+networkx=2.*
 pandas=0.23.*
 numpy=1.19.*         # Avoid breaking pandas on OSX
 libblas=*=*openblas  # Avoid large mkl package (pulled in by pandas)
@@ -20,7 +21,7 @@ boltons=18.*
 jsonschema=2.6.*     # JSON schema verification
 
 # pinnings
-conda-forge-pinning=2021.05.28.18.39.39
+conda-forge-pinning=2022.02.18.13.24.38
 
 # tools
 anaconda-client=1.6.*  # anaconda_upload
@@ -32,8 +33,8 @@ git=2.*                # well - git
 regex=2018.08.29
 
 # asyncio
-aiohttp=3.4.*      # HTTP lib
-aiofiles=0.4.*     # async open
+aiohttp=3.8.*      # HTTP lib
+aiofiles=0.8.*     # async open
 aioftp=0.12.*      # FTP lib
 backoff=1.6.*      # retrying of failed API calls
 cachetools=3.0.*   # request caching (NEEDED?)
@@ -47,7 +48,8 @@ pyjwt=1.7.*               # githubhandler (JWT signing)
 # unknown
 beautifulsoup4=4.6.*
 galaxy-lib>=18.9.1
-jinja2>=2.10.1,<2.11.a0
+jinja2>=2.10.1,<3
+markupsafe<2.1           # markupsafe 2.1 breaks jinja2
 
 # docs
 sphinx>=4.1

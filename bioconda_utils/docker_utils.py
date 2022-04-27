@@ -94,6 +94,7 @@ set -eo pipefail
 # exists before adding the channel.
 mkdir -p {self.container_staging}/linux-64
 mkdir -p {self.container_staging}/noarch
+touch {self.container_staging}/noarch/repodata.json
 conda config --add channels file://{self.container_staging} 2> >(
     grep -vF "Warning: 'file://{self.container_staging}' already in 'channels' list, moving to the top" >&2
 )
@@ -101,10 +102,13 @@ conda config --add channels file://{self.container_staging} 2> >(
 # The actual building...
 # we explicitly point to the meta.yaml, in order to keep
 # conda-build from building all subdirectories
-conda build {self.conda_build_args} {self.container_recipe}/meta.yaml 2>&1
+conda mambabuild {self.conda_build_args} {self.container_recipe}/meta.yaml 2>&1
 
 # copy all built packages to the staging area
-cp `conda build {self.conda_build_args} {self.container_recipe}/meta.yaml --output` {self.container_staging}/{arch}
+cp /opt/conda/conda-bld/*/*.tar.bz2 {self.container_staging}/{arch}
+#While technically better, this is slower and more prone to breaking
+#cp `conda mambabuild {self.conda_build_args} {self.container_recipe}/meta.yaml --output | grep tar.bz2` {self.container_staging}/{arch}
+conda index {self.container_staging}
 # Ensure permissions are correct on the host.
 HOST_USER={self.user_info[uid]}
 chown $HOST_USER:$HOST_USER {self.container_staging}/{arch}/*
