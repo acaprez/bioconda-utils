@@ -85,3 +85,7 @@ pin_run_as_build:
     max_pin: x.x        # [linux]
   cudnn:                # [linux]
     max_pin: x.x.x      # [linux]
+
+# be a little more specific and use 4.1
+openmpi:
+  - 4.1.*
