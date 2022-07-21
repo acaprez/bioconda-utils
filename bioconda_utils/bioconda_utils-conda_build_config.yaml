@@ -38,10 +38,8 @@ python:
   - 3.8.*  *_cpython
   - 3.7.*  *_cpython
   - 3.6.*  *_cpython
-  - 2.7.*  *_cpython
 # conda-forge only has 3 python versions, so we need to modify the length of the other zip_keys in its group
 python_impl:
-  - cpython
   - cpython
   - cpython
   - cpython
@@ -51,7 +49,6 @@ numpy:
   - 1.17.*
   - 1.17.*
   - 1.17.*
-  - 1.16.*
 
 channel_sources:
   - hcc,conda-forge,bioconda,defaults
