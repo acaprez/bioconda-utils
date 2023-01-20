@@ -19,9 +19,11 @@ numpy=1.19.*         # Avoid breaking pandas on OSX
 libblas=*=*openblas  # Avoid large mkl package (pulled in by pandas)
 boltons=18.*
 jsonschema=2.6.*     # JSON schema verification
+simplejson           # Used by bioconda bot worker (NEEDED?)
+pyopenssl>=22.1      # Stay compatible with cryptography
 
 # pinnings
-conda-forge-pinning=2022.02.18.13.24.38
+conda-forge-pinning=2022.08.25.15.20.42
 
 # tools
 anaconda-client=1.6.*  # anaconda_upload
@@ -34,6 +36,9 @@ regex=2018.08.29
 
 # asyncio
 aiohttp=3.8.*      # HTTP lib
+aiohttp-jinja2     # jinja2 renderer for aiohttp.web
+aiohttp-session
+aiohttp-security
 aiofiles=0.8.*     # async open
 aioftp=0.12.*      # FTP lib
 backoff=1.6.*      # retrying of failed API calls
@@ -43,7 +48,7 @@ cachetools=3.0.*   # request caching (NEEDED?)
 gitpython>=3.0.8,3.0.*    # githandler
                           # needs >=3.0.8 due to https://github.com/conda-forge/staged-recipes/issues/10874
 gidgethub=3.0.*           # githubhandler
-pyjwt=1.7.*               # githubhandler (JWT signing)
+pyjwt>=2.4.0              # githubhandler (JWT signing), needs >=2.4.0, CVE-2022-29217
 
 # unknown
 beautifulsoup4=4.6.*
@@ -57,6 +62,8 @@ celery
 sphinx-autodoc-typehints
 alabaster=0.7.*
 docutils
+markdown
+graphviz
 
 # The bioconductor skeleton needs this
 requests=2.22.*

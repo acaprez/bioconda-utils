@@ -215,6 +215,8 @@ def setup_logger(name: str = 'bioconda_utils', loglevel: Union[str, int] = loggi
     """
     new_logger = logging.getLogger(name)
     root_logger = logging.getLogger()
+    if root_logger.hasHandlers():
+        root_logger.handlers.clear()
 
     if logfile:
         if isinstance(logfile_level, str):
@@ -288,7 +290,7 @@ def ellipsize_recipes(recipes: Collection[str], recipe_folder: str,
         append = ", ..."
     else:
         append = ""
-    return ' ('+', '.join(recipe.lstrip(recipe_folder).lstrip('/')
+    return ' ('+', '.join(recipe.replace(recipe_folder,'').lstrip('/')
                      for recipe in recipes) + append + ')'
 
 
