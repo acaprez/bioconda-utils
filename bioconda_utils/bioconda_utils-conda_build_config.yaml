@@ -96,3 +96,16 @@ pin_run_as_build:
 # be a little more specific and use 4.1
 openmpi:
   - 4.1.*
+
+oneapi_c_compiler:
+  - icc
+oneapi_cxx_compiler:
+  - icpc
+oneapi_fortran_compiler:
+  - ifort
+oneapi_c_compiler_version:
+  - 2021
+oneapi_cxx_compiler_version:
+  - 2021
+oneapi_fortran_compiler_version:
+  - 2021
