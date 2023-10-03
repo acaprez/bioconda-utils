@@ -68,6 +68,9 @@ graphviz
 # The bioconductor skeleton needs this
 requests=2.22.*
 
+# merge handling
+pygithub
+
 # HCC changes
 # https://github.com/gitpython-developers/GitPython/issues/241
 gitdb2=3.0.0
