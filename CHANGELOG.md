@@ -1,5 +1,147 @@
 # Changelog
 
+## [2.4.0](https://www.github.com/bioconda/bioconda-utils/compare/v2.3.4...v2.4.0) (2023-08-24)
+
+
+### Features
+
+* lint missing run exports ([#908](https://www.github.com/bioconda/bioconda-utils/issues/908)) ([84f5c0c](https://www.github.com/bioconda/bioconda-utils/commit/84f5c0c0b4ec4ba4f1756cbe74da50151efa77a3))
+
+
+### Bug Fixes
+
+* recover --docker-base-image feature ([#906](https://www.github.com/bioconda/bioconda-utils/issues/906)) ([aa08857](https://www.github.com/bioconda/bioconda-utils/commit/aa088572d3721837d08556634961c5c7d86814c1))
+* swaps from github API to expanding the assets ([#907](https://www.github.com/bioconda/bioconda-utils/issues/907)) ([2099a40](https://www.github.com/bioconda/bioconda-utils/commit/2099a405f1b888699eb2026146aa0b4f3f070fb0))
+* use package name instead of folder for build failure list dag check ([#910](https://www.github.com/bioconda/bioconda-utils/issues/910)) ([11fb14f](https://www.github.com/bioconda/bioconda-utils/commit/11fb14fd1a95c05dca96887d0d9935f6954447e2))
+
+### [2.3.4](https://www.github.com/bioconda/bioconda-utils/compare/v2.3.3...v2.3.4) (2023-07-15)
+
+
+### Bug Fixes
+
+* update pinning for libxml2 due to conda-forge migration ([#903](https://www.github.com/bioconda/bioconda-utils/issues/903)) ([ee226f8](https://www.github.com/bioconda/bioconda-utils/commit/ee226f8e84a0820430c105412f08714a4de34715))
+
+### [2.3.3](https://www.github.com/bioconda/bioconda-utils/compare/v2.3.2...v2.3.3) (2023-07-06)
+
+
+### Bug Fixes
+
+* adds alternate lookup if base lookup fails ([#896](https://www.github.com/bioconda/bioconda-utils/issues/896)) ([17a1475](https://www.github.com/bioconda/bioconda-utils/commit/17a147508a64bdafb6031c05a75724b25669ec8d))
+* update r-base pinning ([#901](https://www.github.com/bioconda/bioconda-utils/issues/901)) ([54d8702](https://www.github.com/bioconda/bioconda-utils/commit/54d870205d823b6f292df5258b980cbbaa97df77))
+
+### [2.3.2](https://www.github.com/bioconda/bioconda-utils/compare/v2.3.1...v2.3.2) (2023-06-29)
+
+
+### Bug Fixes
+
+* update to boa 0.15 which supports strict channel priorities ([#887](https://www.github.com/bioconda/bioconda-utils/issues/887)) ([52f5e6d](https://www.github.com/bioconda/bioconda-utils/commit/52f5e6db3262dd36ac88c4db72dbf7085712eb46))
+
+### [2.3.1](https://www.github.com/bioconda/bioconda-utils/compare/v2.3.0...v2.3.1) (2023-06-07)
+
+
+### Bug Fixes
+
+* improved release workflow ([7abe60d](https://www.github.com/bioconda/bioconda-utils/commit/7abe60dec3e457fa98cff6dd0428327564f4315e))
+* improved release workflow ([18aa50b](https://www.github.com/bioconda/bioconda-utils/commit/18aa50bbcf8d11e4229c0b1a0e1b8beaac58eab7))
+* improved release workflow ([62b8ebe](https://www.github.com/bioconda/bioconda-utils/commit/62b8ebee298a6aaec5cc5fc75af7a9aeec2afde5))
+
+## [2.3.0](https://www.github.com/bioconda/bioconda-utils/compare/v2.2.1...v2.3.0) (2023-06-07)
+
+
+### Features
+
+* always add a fallback archive URL to the meta.yaml when using bioconductor-skeleton ([#886](https://www.github.com/bioconda/bioconda-utils/issues/886)) ([d885495](https://www.github.com/bioconda/bioconda-utils/commit/d885495d54b177411863fdca3bdfa35ca781457f))
+
+
+### Bug Fixes
+
+* various little fixes for build failure records and automatic skiplisting ([#894](https://www.github.com/bioconda/bioconda-utils/issues/894)) ([715efc2](https://www.github.com/bioconda/bioconda-utils/commit/715efc27319afda8b7fe19a0d112a84e8b8569c9))
+
+### [2.2.1](https://www.github.com/bioconda/bioconda-utils/compare/v2.2.0...v2.2.1) (2023-05-22)
+
+
+### Bug Fixes
+
+* use git cli to obtain recipe commit sha, since there seems to be no fast and correct way to do that with gitpython ([#892](https://www.github.com/bioconda/bioconda-utils/issues/892)) ([a6fd713](https://www.github.com/bioconda/bioconda-utils/commit/a6fd7134d03fe39760654d63a9c279c0bd92afd5))
+
+## [2.2.0](https://www.github.com/bioconda/bioconda-utils/compare/v2.1.0...v2.2.0) (2023-05-22)
+
+
+### Features
+
+* add subcommand to skiplist a given recipe using the new recipe specific mechanism; in addition, some fixes for the new skiplisting approach, and renaming blacklist into skiplist ([#890](https://www.github.com/bioconda/bioconda-utils/issues/890)) ([da7a912](https://www.github.com/bioconda/bioconda-utils/commit/da7a912c72a3b2d5566804b942ffecd585edd803))
+
+## [2.1.0](https://www.github.com/bioconda/bioconda-utils/compare/v2.0.0...v2.1.0) (2023-05-21)
+
+
+### Features
+
+* add ability to store build failures as yaml next to recipe, add flag to automatically do so upon build failures, consider such files as blacklisting if they include `blacklist: true`. ([#888](https://www.github.com/bioconda/bioconda-utils/issues/888)) ([e78c120](https://www.github.com/bioconda/bioconda-utils/commit/e78c120a239cf1b845aba44043d51b89f7a27d55))
+
+## [2.0.0](https://www.github.com/bioconda/bioconda-utils/compare/v1.7.1...v2.0.0) (2023-05-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove old unused bot code and simplejson dependency (#883)
+
+### Features
+
+* remove old unused bot code and simplejson dependency ([#883](https://www.github.com/bioconda/bioconda-utils/issues/883)) ([cab3df5](https://www.github.com/bioconda/bioconda-utils/commit/cab3df5de9ba50a181b4f64954dd513c828957d0))
+
+### [1.7.1](https://www.github.com/bioconda/bioconda-utils/compare/v1.7.0...v1.7.1) (2023-05-11)
+
+
+### Bug Fixes
+
+* support proxy settings via the usual environment variables (HTTPS_PROXY, ...) ([#881](https://www.github.com/bioconda/bioconda-utils/issues/881)) ([5d21b64](https://www.github.com/bioconda/bioconda-utils/commit/5d21b64aced5f8406dfd1de72d58e4c11b98d54f))
+
+## [1.7.0](https://www.github.com/bioconda/bioconda-utils/compare/v1.6.2...v1.7.0) (2023-05-08)
+
+
+### Performance Improvements
+
+* update to latest conda-forge pinnings and ditch building for Python 3.7 and 3.6 ([#878](https://www.github.com/bioconda/bioconda-utils/issues/878)) ([0704708](https://www.github.com/bioconda/bioconda-utils/commit/0704708238a0793b0f9d7363dc2470418952030d))
+* update to latest conda-forge pinnings and ditch building for Python 3.7 and 3.6 ([#878](https://www.github.com/bioconda/bioconda-utils/issues/878)) ([6b5e9f5](https://www.github.com/bioconda/bioconda-utils/commit/6b5e9f53bce9380ff9495dedd2abe45fb9dfcf07))
+
+
+### Miscellaneous Chores
+
+* release 1.7.0 ([9bf3ba9](https://www.github.com/bioconda/bioconda-utils/commit/9bf3ba91c2a00d890b52121203cc8a2e296fdfaf))
+
+### [1.6.2](https://www.github.com/bioconda/bioconda-utils/compare/v1.6.1...v1.6.2) (2023-05-04)
+
+
+### Bug Fixes
+
+* fix obtaining LegacyVersion class from pkg_resources ([bceae0f](https://www.github.com/bioconda/bioconda-utils/commit/bceae0f87c5a9008e8a6dd9e9d98a3a1f8313f51))
+
+### [1.6.1](https://www.github.com/bioconda/bioconda-utils/compare/v1.6.0...v1.6.1) (2023-05-04)
+
+
+### Bug Fixes
+
+* use strict channel priorities in the right order in the container image ([#874](https://www.github.com/bioconda/bioconda-utils/issues/874)) ([6e6c91a](https://www.github.com/bioconda/bioconda-utils/commit/6e6c91a5af5d857f157eb5250f2f87ad56fbc28d))
+
+## [1.6.0](https://www.github.com/bioconda/bioconda-utils/compare/v1.5.7...v1.6.0) (2023-05-02)
+
+
+### Features
+
+* Add --mulled-conda-image ([#867](https://www.github.com/bioconda/bioconda-utils/issues/867)) ([1923d24](https://www.github.com/bioconda/bioconda-utils/commit/1923d24c4f3cd38740ecfbf240b92d5eb1432e09))
+* add Linux aarch64/arm64 support for bioconda-utils ([#866](https://www.github.com/bioconda/bioconda-utils/issues/866)) ([794ec06](https://www.github.com/bioconda/bioconda-utils/commit/794ec068afd3b1eaababb79e2680cf2ad3fdc1a2))
+
+
+### Bug Fixes
+
+* allow lint for blacklist to see blacklisted recipes ([#863](https://www.github.com/bioconda/bioconda-utils/issues/863)) ([0e63e73](https://www.github.com/bioconda/bioconda-utils/commit/0e63e73c22e3c1160eb5c8ad3f35c34ac4ea6f27))
+* fix autobump ([#865](https://www.github.com/bioconda/bioconda-utils/issues/865)) ([b6b674c](https://www.github.com/bioconda/bioconda-utils/commit/b6b674ca81326a6bd6700cb9802b3d7440c08762))
+
+
+### Performance Improvements
+
+* upgrade to latest conda, conda-build, and boa versions ([#872](https://www.github.com/bioconda/bioconda-utils/issues/872)) ([21a6452](https://www.github.com/bioconda/bioconda-utils/commit/21a6452fcad99b78f976746a2b14339e094327df))
+
 ### [1.5.7](https://www.github.com/bioconda/bioconda-utils/compare/v1.5.6...v1.5.7) (2023-03-24)
 
 
