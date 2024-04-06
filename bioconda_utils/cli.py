@@ -9,7 +9,7 @@ Bioconda Utils Command Line Interface
 import warnings
 from bioconda_utils import bulk
 
-from bioconda_utils.artifacts import upload_pr_artifacts
+from bioconda_utils.artifacts import UploadResult, upload_pr_artifacts
 from bioconda_utils.skiplist import Skiplist
 from bioconda_utils.build_failure import BuildFailureRecord, collect_build_failure_dataframe
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
@@ -434,6 +434,9 @@ from environment, even after successful build and test.''')
      Dockerfile template.''')
 @arg("--record-build-failures", action="store_true", help="Record build failures in build_failure.yaml next to the recipe.")
 @arg("--skiplist-leafs", action="store_true", help="Skiplist leaf recipes (i.e. ones that are not depended on by any other recipes) that fail to build.")
+@arg('--disable-live-logs', action='store_true', help="Disable live logging during the build process")
+@arg('--exclude', nargs='+', help='Packages to exclude during this run')
+@arg('--subdag-depth', type=int, help="Number of levels of root nodes to skip. (Optional, and only if using n_workers)")
 @enable_logging()
 def build(recipe_folder, config, packages="*", git_range=None, testonly=False,
           force=False, docker=None, mulled_test=False, build_script_template=None,
@@ -443,7 +446,10 @@ def build(recipe_folder, config, packages="*", git_range=None, testonly=False,
           mulled_conda_image=pkg_test.MULLED_CONDA_IMAGE,
           docker_base_image=None,
           record_build_failures=False,
-          skiplist_leafs=False):
+          skiplist_leafs=False,
+          disable_live_logs=False,
+          exclude=None,
+          subdag_depth=None):
     cfg = utils.load_config(config)
     setup = cfg.get('setup', None)
     if setup:
@@ -503,7 +509,11 @@ def build(recipe_folder, config, packages="*", git_range=None, testonly=False,
                             keep_old_work=keep_old_work,
                             mulled_conda_image=mulled_conda_image,
                             record_build_failures=record_build_failures,
-                            skiplist_leafs=skiplist_leafs)
+                            skiplist_leafs=skiplist_leafs,
+                            live_logs=(not disable_live_logs),
+                            exclude=exclude,
+                            subdag_depth=subdag_depth
+                            )
     exit(0 if success else 1)
 
 
@@ -517,6 +527,7 @@ def build(recipe_folder, config, packages="*", git_range=None, testonly=False,
 @arg('--dryrun', action='store_true', help='''Do not actually upload anything.''')
 @arg('--fallback', choices=['build', 'ignore'], default='build', help="What to do if no artifacts are found in the PR.")
 @arg('--quay-upload-target', help="Provide a quay.io target to push docker images to.")
+@arg('--artifact-source', choices=['azure', 'circleci','github-actions'], default='azure', help="Application hosting build artifacts (e.g., Azure, Circle CI, or GitHub Actions).")
 @enable_logging()
 def handle_merged_pr(
     recipe_folder,
@@ -525,14 +536,17 @@ def handle_merged_pr(
     git_range=None,
     dryrun=False,
     fallback='build',
-    quay_upload_target=None
+    quay_upload_target=None,
+    artifact_source='azure'
 ):
     label = os.getenv('BIOCONDA_LABEL', None) or None
 
-    success = upload_pr_artifacts(
-        config, repo, git_range[1], dryrun=dryrun, mulled_upload_target=quay_upload_target, label=label
+    res = upload_pr_artifacts(
+        config, repo, git_range[1], dryrun=dryrun,
+        mulled_upload_target=quay_upload_target, label=label,
+        artifact_source=artifact_source
     )
-    if not success and fallback == 'build':
+    if res == UploadResult.NO_ARTIFACTS and fallback == 'build':
         success = build(
             recipe_folder,
             config,
@@ -542,6 +556,8 @@ def handle_merged_pr(
             mulled_test=True,
             label=label,
         )
+    else:
+        success = res != UploadResult.FAILURE
     exit(0 if success else 1)
 
 @recipe_folder_and_config()
@@ -563,9 +579,7 @@ def dag(recipe_folder, config, packages="*", format='gml', hide_singletons=False
     """
     Export the DAG of packages to a graph format file for visualization
     """
-    dag, name2recipes = graph.build(utils.get_recipes(recipe_folder, "*"), config)
-    if packages != "*":
-        dag = graph.filter(dag, packages)
+    dag, name2recipes = graph.build(utils.get_recipes(recipe_folder, packages), config)
     if hide_singletons:
         for node in nx.nodes(dag):
             if dag.degree(node) == 0:
@@ -1070,7 +1084,11 @@ def annotate_build_failures(recipes, skiplist=False, reason=None, category=None,
 @arg('--channel', help="Channel with packages to check", default="bioconda")
 @arg('--output-format', help="Output format", choices=['txt', 'markdown'], default="txt")
 @arg('--link-prefix', help="Prefix for links to build failures", default='')
-def list_build_failures(recipe_folder, config, channel=None, output_format=None, link_prefix=None):
+@arg('--git-range', nargs='+',
+     help='''Git range (e.g. commits or something like
+     "master HEAD" to check commits in HEAD vs master, or just "HEAD" to
+     include uncommitted changes).''')
+def list_build_failures(recipe_folder, config, channel=None, output_format=None, link_prefix=None, git_range=None):
     """List recipes with build failure records"""
 
     df = collect_build_failure_dataframe(
@@ -1079,6 +1097,7 @@ def list_build_failures(recipe_folder, config, channel=None, output_format=None,
         channel,
         link_fmt=output_format,
         link_prefix=link_prefix,
+        git_range=git_range
     )
     if output_format == "markdown":
         fmt_writer = pandas.DataFrame.to_markdown
@@ -1090,15 +1109,11 @@ def list_build_failures(recipe_folder, config, channel=None, output_format=None,
     fmt_writer(df, sys.stdout, index=False)
 
 
-@arg(
-    'message',
-     help="The commit message. Will be prepended with [ci skip] to avoid that commits accidentally trigger a rerun while bulk is already running"
-)
-def bulk_commit(message):
-    bulk.commit(message)
-
-
 def bulk_trigger_ci():
+    """
+    Create an empty commit with the string "[ci run]" and push, which
+    triggers a bulk CI run. Must be on the `bulk` branch.
+    """
     bulk.trigger_ci()
 
 
@@ -1110,5 +1125,5 @@ def main():
         build, dag, dependent, do_lint, duplicates, update_pinning,
         bioconductor_skeleton, clean_cran_skeleton, autobump,
         handle_merged_pr, annotate_build_failures, list_build_failures,
-        bulk_commit, bulk_trigger_ci
+        bulk_trigger_ci
     ])

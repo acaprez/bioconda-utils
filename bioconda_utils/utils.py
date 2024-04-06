@@ -11,6 +11,7 @@ import fnmatch
 import glob
 import logging
 import os
+import platform
 import re
 import subprocess as sp
 import sys
@@ -1516,8 +1517,13 @@ class RepoData:
 
     @staticmethod
     def native_platform():
+        arch = platform.machine()
+        if sys.platform.startswith("linux") and arch == "aarch64":
+            return "linux-aarch64"
         if sys.platform.startswith("linux"):
             return "linux"
+        if sys.platform.startswith("darwin") and arch == "arm64":
+            return "osx-arm64"
         if sys.platform.startswith("darwin"):
             return "osx"
         raise ValueError("Running on unsupported platform")
@@ -1526,14 +1532,17 @@ class RepoData:
     def platform2subdir(platform):
         if platform == 'linux':
             return 'linux-64'
+        elif platform == 'linux-aarch64':
+            return 'linux-aarch64'
         elif platform == 'osx':
             return 'osx-64'
+        elif platform == 'osx-arm64':
+            return 'osx-arm64'
         elif platform == 'noarch':
             return 'noarch'
         else:
             raise ValueError(
-                'Unsupported platform: bioconda only supports linux, osx and noarch.')
-
+                'Unsupported platform: bioconda only supports linux, linux-aarch64, osx, osx-arm64 and noarch.')
 
 
     def get_versions(self, name):
@@ -1603,8 +1612,15 @@ class RepoData:
 def get_github_client():
     """Get a Github client with a robust retry policy.
     """
+    if "GITHUB_TOKEN" in os.environ.keys():
+        return Github(
+            os.environ["GITHUB_TOKEN"],
+            retry=Retry(
+                total=10, status_forcelist=(500, 502, 504), backoff_factor=0.3
+            ),
+        )
+    logger.warn("GITHUB_TOKEN not found, restrictions may be enforced by GitHub API")
     return Github(
-        os.environ["GITHUB_TOKEN"],
         retry=Retry(
             total=10, status_forcelist=(500, 502, 504), backoff_factor=0.3
         ),
@@ -1635,4 +1651,6 @@ def yaml_remove_invalid_chars(text: str, valid_chars_re=re.compile(r"[^ \t\n\w\d
 def get_package_downloads(channel, package):
     """Use anaconda API to obtain download counts."""
     data = requests.get(f"https://api.anaconda.org/package/{channel}/{package}").json()
-    return sum(rec["ndownloads"] for rec in data["files"])
+    if "files" in data:
+        return sum(rec["ndownloads"] for rec in data["files"])
+    return 0
