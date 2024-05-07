@@ -156,6 +156,37 @@ def multi_build(request, recipes_fixture, config_fixture):
             ensure_missing(pkg)
 
 
+@pytest.fixture(scope='module', params=PARAMS, ids=IDS)
+def multi_build_exclude(request, recipes_fixture, config_fixture):
+    """
+    Builds the "one" and "two" recipes; provides (but then excludes) the
+    "three" recipe.
+    """
+    if request.param:
+        docker_builder = docker_utils.RecipeBuilder(
+            use_host_conda_bld=True,
+            docker_base_image=DOCKER_BASE_IMAGE)
+        mulled_test = True
+    else:
+        docker_builder = None
+        mulled_test = False
+    logger.error("Fixture: Building one/two (and not three) %s",
+                 "within docker" if docker_builder else "locally")
+    build.build_recipes(recipes_fixture.basedir, config_fixture,
+                        recipes_fixture.recipe_dirnames,
+                        docker_builder=docker_builder,
+                        mulled_test=mulled_test,
+                        exclude=['three'],
+                        )
+    logger.error("Fixture: Building one/two (and not three) %s -- DONE",
+                 "within docker" if docker_builder else "locally")
+    built_packages = recipes_fixture.pkgs
+    yield built_packages
+    for pkgs in built_packages.values():
+        for pkg in pkgs:
+            ensure_missing(pkg)
+
+
 @pytest.fixture(scope='module')
 def single_upload():
     """
@@ -216,6 +247,7 @@ def test_upload(single_upload):
 def test_single_build_only(single_build):
     for pkg in single_build:
         assert os.path.exists(pkg)
+        ensure_missing(pkg)
 
 
 @pytest.mark.skipif(SKIP_DOCKER_TESTS, reason='skipping on osx')
@@ -229,6 +261,18 @@ def test_multi_build(multi_build):
     for v in multi_build.values():
         for pkg in v:
             assert os.path.exists(pkg)
+            ensure_missing(pkg)
+
+
+@pytest.mark.long_running_1
+def test_multi_build_exclude(multi_build_exclude):
+    for (k, v) in multi_build_exclude.items():
+        for pkg in v:
+            if k == 'three':
+                assert not os.path.exists(pkg)
+            else:
+                assert os.path.exists(pkg)
+                ensure_missing(pkg)
 
 
 @pytest.mark.skipif(SKIP_DOCKER_TESTS, reason='skipping on osx')
@@ -268,6 +312,7 @@ def test_docker_builder_build(recipes_fixture):
                                 build_args='', env={})
     for pkg in pkgs:
         assert os.path.exists(pkg)
+        ensure_missing(pkg)
 
 
 @pytest.mark.skipif(SKIP_DOCKER_TESTS, reason='skipping on osx')
@@ -887,6 +932,67 @@ def test_load_meta_skipping():
     r.write_recipes()
     recipe = r.recipe_dirs['one']
     assert utils.load_all_meta(recipe) == []
+
+
+def test_native_platform_skipping():
+    expections = [
+        # Don't skip linux-x86 for any recipes
+        ["one", "linux", False],
+        ["two", "linux", False],
+        ["three", "linux", False],
+        ["four", "linux", False],
+        # Skip recipes without linux aarch64 enable on linux-aarch64 platform
+        ["one", "linux-aarch64", True],
+        ["three", "linux-aarch64", True],
+        # Don't skip recipes with linux aarch64 enable on linux-aarch64 platform
+        ["two", "linux-aarch64", False],
+        ["four", "linux-aarch64", False],
+        ["one", "osx-arm64", True],
+        ["two", "osx-arm64", True],
+        ["three", "osx-arm64", False],
+        ["four", "osx-arm64", False],
+    ]
+    r = Recipes(
+        """
+        one:
+          meta.yaml: |
+            package:
+              name: one
+              version: "0.1"
+        two:
+          meta.yaml: |
+            package:
+              name: two
+              version: "0.1"
+            extra:
+              additional-platforms:
+                - linux-aarch64
+        three:
+          meta.yaml: |
+            package:
+              name: three
+              version: "0.1"
+            extra:
+              additional-platforms:
+                - osx-arm64
+        four:
+          meta.yaml: |
+            package:
+              name: four
+              version: "0.1"
+            extra:
+              additional-platforms:
+                - linux-aarch64
+                - osx-arm64
+        """, from_string=True)
+    r.write_recipes()
+    # Make sure RepoData singleton init
+    utils.RepoData.register_config(config_fixture)
+    for recipe_name, platform, result in expections:
+        recipe_folder = os.path.dirname(r.recipe_dirs[recipe_name])
+        assert build.do_not_consider_for_additional_platform(recipe_folder,
+                                                             r.recipe_dirs[recipe_name],
+                                                             platform) == result
 
 
 def test_variants():

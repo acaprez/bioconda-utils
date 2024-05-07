@@ -83,7 +83,7 @@ logger = logging.getLogger(__name__)
 # filled in here.
 #
 BUILD_SCRIPT_TEMPLATE = \
-"""
+r"""
 #!/bin/bash
 set -eo pipefail
 
@@ -94,10 +94,13 @@ set -eo pipefail
 # will exist in the container but will be empty.  Channels expect at least
 # a linux-64/linux-aarch64 and noarch directory within that directory, so we
 # make sure it exists before adding the channel.
-mkdir -p {self.container_staging}/linux-64
-mkdir -p {self.container_staging}/linux-aarch64
-mkdir -p {self.container_staging}/noarch
-touch {self.container_staging}/noarch/repodata.json
+# Also ensure conda-build's local channel directory exists the same way.
+for local_channel in '/opt/conda/conda-bld' '{self.container_staging}'; do
+  mkdir -p "${{local_channel}}"/linux-64
+  mkdir -p "${{local_channel}}"/linux-aarch64
+  mkdir -p "${{local_channel}}"/noarch
+  conda index "${{local_channel}}"
+done
 conda config --add channels file://{self.container_staging} 2> >(
     grep -vF "Warning: 'file://{self.container_staging}' already in 'channels' list, moving to the top" >&2
 )
@@ -105,12 +108,15 @@ conda config --add channels file://{self.container_staging} 2> >(
 # The actual building...
 # we explicitly point to the meta.yaml, in order to keep
 # conda-build from building all subdirectories
-conda mambabuild {self.conda_build_args} {self.container_recipe}/meta.yaml 2>&1
+conda-build -c file://{self.container_staging} {self.conda_build_args} {self.container_recipe}/meta.yaml 2>&1
 
 # copy all built packages to the staging area
-cp /opt/conda/conda-bld/*/*.tar.bz2 {self.container_staging}/{arch}
+find /opt/conda/conda-bld \
+  -name src_cache -prune -o \
+  -type f \( -name '*.tar.bz2' -o -name '*.conda' \) -print0 |
+  xargs -0 -- cp -t '{self.container_staging}/{arch}' --
 #While technically better, this is slower and more prone to breaking
-#cp `conda mambabuild {self.conda_build_args} {self.container_recipe}/meta.yaml --output | grep tar.bz2` {self.container_staging}/{arch}
+#cp `conda-build {self.conda_build_args} {self.container_recipe}/meta.yaml --output | grep -e '\.tar\.bz2$' -e '\.conda$')` {self.container_staging}/{arch}
 conda index {self.container_staging}
 # Ensure permissions are correct on the host.
 HOST_USER={self.user_info[uid]}
@@ -402,7 +408,7 @@ class RecipeBuilder(object):
             shutil.rmtree(build_dir)
         return p
 
-    def build_recipe(self, recipe_dir, build_args, env, noarch=False):
+    def build_recipe(self, recipe_dir, build_args, env, noarch=False, live_logs=True):
         """
         Build a single recipe.
 
@@ -474,7 +480,7 @@ class RecipeBuilder(object):
 
         logger.debug('DOCKER: cmd: %s', cmd)
         with utils.Progress():
-            p = utils.run(cmd, mask=False)
+            p = utils.run(cmd, mask=False, live=live_logs)
         return p
 
     def cleanup(self):
