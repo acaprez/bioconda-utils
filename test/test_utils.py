@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import subprocess as sp
 import pytest
@@ -10,9 +11,10 @@ import contextlib
 import tarfile
 import logging
 import shutil
+from pathlib import Path
 from textwrap import dedent
 
-from conda_build import metadata
+from conda_build import api, metadata, exceptions
 
 from bioconda_utils import __version__
 from bioconda_utils import utils
@@ -248,6 +250,30 @@ def test_single_build_only(single_build):
     for pkg in single_build:
         assert os.path.exists(pkg)
         ensure_missing(pkg)
+
+
+@pytest.mark.skipif(SKIP_DOCKER_TESTS, reason='skipping on osx')
+@pytest.mark.long_running_2
+def test_single_build_pkg_dir(recipes_fixture):
+    """
+    Builds the "one" recipe with pkg_dir.
+    """
+    logger.error("Making recipe builder")
+    docker_builder = docker_utils.RecipeBuilder(
+        use_host_conda_bld=True,
+        pkg_dir=os.getcwd() + "/output",
+        docker_base_image=DOCKER_BASE_IMAGE)
+    mulled_test = False
+    logger.error("DONE")
+    logger.error("Fixture: Building 'one' within docker with pkg_dir")
+    res = build.build(
+        recipe=recipes_fixture.recipe_dirs['one'],
+        pkg_paths=recipes_fixture.pkgs['one'],
+        docker_builder=docker_builder,
+        mulled_test=mulled_test,
+    )
+    logger.error("Fixture: Building 'one' within docker and pkg_dir -- DONE")
+    assert res.success
 
 
 @pytest.mark.skipif(SKIP_DOCKER_TESTS, reason='skipping on osx')
@@ -650,7 +676,7 @@ def test_rendering_sandboxing():
         assert ("'GITHUB_TOKEN' is undefined" in str(excinfo.value.stdout))
     else:
         # recipe for "one" should fail because GITHUB_TOKEN is not a jinja var.
-        with pytest.raises(SystemExit) as excinfo:
+        with pytest.raises(exceptions.CondaBuildUserError) as excinfo:
             pkg_paths = utils.built_package_paths(r.recipe_dirs['one'])
             build.build(
                 recipe=r.recipe_dirs['one'],
@@ -1246,3 +1272,64 @@ def test_skip_unsatisfiable_pin_compatible(config_fixture):
     )
     assert build_result
     assert len(utils.load_all_meta(r.recipe_dirs["two"])) == 1
+
+
+@pytest.mark.parametrize('mulled_test', PARAMS, ids=IDS)
+@pytest.mark.parametrize('pkg_format', ["1", "2"])
+def test_pkg_test_conda_package_format(
+    config_fixture, pkg_format, mulled_test, tmp_path, monkeypatch
+):
+    """
+    Running a mulled-build test with .tar.bz2/.conda package formats
+    """
+    # ("1" is .tar.bz2 and "2" is .conda)
+    try:
+        from conda_build.conda_interface import cc_conda_build
+    except ImportError:
+        pass
+    else:
+        monkeypatch.setitem(cc_conda_build, "pkg_format", pkg_format)
+    from conda.base.context import context
+    monkeypatch.setitem(context.conda_build, "pkg_format", pkg_format)
+    condarc = Path(tmp_path, ".condarc")
+    condarc.write_text(f"conda_build:\n  pkg_format: {pkg_format}\n")
+    monkeypatch.setenv("CONDARC", str(condarc))
+    monkeypatch.setattr(utils, "ENV_VAR_WHITELIST", ["CONDARC", *utils.ENV_VAR_WHITELIST])
+
+    r = Recipes(
+        f"""
+        one:
+          meta.yaml: |
+            package:
+              name: one
+              version: 1.1
+            build:
+              script:
+               - touch "${{PREFIX}}/one-file"
+            test:
+              commands:
+                - test -f "${{PREFIX}}/one-file"
+        """,
+        from_string=True,
+    )
+    r.write_recipes()
+    docker_builder = None
+    if mulled_test:
+        docker_builder = docker_utils.RecipeBuilder(
+            use_host_conda_bld=True,
+            docker_base_image=DOCKER_BASE_IMAGE,
+        )
+    build_result = build.build_recipes(
+        r.basedir,
+        config_fixture,
+        r.recipe_dirnames,
+        docker_builder=docker_builder,
+        mulled_test=mulled_test,
+    )
+    assert build_result
+
+    for recipe_dir in r.recipe_dirnames:
+        for pkg_file in utils.built_package_paths(recipe_dir):
+            assert pkg_file.endswith({"1": ".tar.bz2", "2": ".conda"}[pkg_format])
+            assert os.path.exists(pkg_file)
+            ensure_missing(pkg_file)

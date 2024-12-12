@@ -410,19 +410,18 @@ def sandboxed_env(env):
     the existing `os.environ` or the provided **env** that match
     ENV_VAR_WHITELIST globs.
     """
+    os_environ = os.environ
+    orig = os_environ.copy()
     env = dict(env)
-    orig = os.environ.copy()
-
-    _env = {k: v for k, v in orig.items() if allowed_env_var(k)}
-    _env.update({k: str(v) for k, v in env.items() if allowed_env_var(k)})
-
-    os.environ = _env
 
     try:
+        os_environ.clear()
+        os_environ.update({k: v for k, v in orig.items() if allowed_env_var(k)})
+        os_environ.update({k: str(v) for k, v in env.items() if allowed_env_var(k)})
         yield
     finally:
-        os.environ.clear()
-        os.environ.update(orig)
+        os_environ.clear()
+        os_environ.update(orig)
 
 
 def load_all_meta(recipe, config=None, finalize=True):
@@ -1198,7 +1197,7 @@ def load_config(path):
 
     default_config = {
         'blacklists': [],
-        'channels': ['conda-forge', 'bioconda', 'defaults'],
+        'channels': ['conda-forge', 'bioconda'],
         'requirements': None,
         'upload_channel': 'bioconda'
     }
@@ -1403,7 +1402,7 @@ class RepoData:
     #: Columns available in internal dataframe
     columns = _load_columns + ['channel', 'subdir', 'platform']
     #: Platforms loaded
-    platforms = ['linux', 'osx', 'noarch']
+    platforms = ['linux', 'linux-aarch64', 'osx', 'osx-arm64', 'noarch']
     # config object
     config = None
 

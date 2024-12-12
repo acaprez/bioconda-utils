@@ -4,9 +4,11 @@ Package Builder
 
 import subprocess as sp
 from collections import defaultdict, namedtuple
-import os
-import logging
 import itertools
+import logging
+import os
+import sys
+import time
 
 from typing import List, Optional
 from bioconda_utils.skiplist import Skiplist
@@ -122,9 +124,9 @@ def build(recipe: str, pkg_paths: List[str] = None,
     is_noarch = bool(meta.get_value('build/noarch', default=False))
     use_base_image = meta.get_value('extra/container', {}).get('extended-base', False)
     if use_base_image:
-        base_image = 'quay.io/bioconda/base-glibc-debian-bash:3.0'
+        base_image = 'quay.io/bioconda/base-glibc-debian-bash:3.1'
     else:
-        base_image = 'quay.io/bioconda/base-glibc-busybox-bash:3.0'
+        base_image = 'quay.io/bioconda/base-glibc-busybox-bash:3.1'
 
     build_failure_record = BuildFailureRecord(recipe)
     build_failure_record_existed_before_build = build_failure_record.exists()
@@ -140,6 +142,12 @@ def build(recipe: str, pkg_paths: List[str] = None,
                                         noarch=is_noarch,
                                         live_logs=live_logs)
             # Use presence of expected packages to check for success
+            if docker_builder.pkg_dir is not None:
+                platform = utils.RepoData.native_platform()
+                subfolder = utils.RepoData.platform2subdir(platform)
+                conda_build_config = utils.load_conda_build_config(platform=subfolder)
+                pkg_paths = [p.replace(conda_build_config.output_folder, docker_builder.pkg_dir) for p in pkg_paths]
+            
             for pkg_path in pkg_paths:
                 if not os.path.exists(pkg_path):
                     logger.error(
