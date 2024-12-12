@@ -51,12 +51,6 @@ r_base:
 #   - 1.22.*
 #   - 1.22.*
 
-# Warning! This needs to both match the length of python and python_impl but ALSO match what conda-forge is using/has used!
-numpy:
-  - 1.21.*
-  - 1.21.*
-  - 1.21.*
-
 channel_sources:
   - hcc,conda-forge,bioconda,defaults
 
