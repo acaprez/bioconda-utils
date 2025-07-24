@@ -1,5 +1,48 @@
 # Changelog
 
+### [3.7.2](https://www.github.com/bioconda/bioconda-utils/compare/v3.7.1...v3.7.2) (2025-03-20)
+
+
+### Bug Fixes
+
+* include pypi.org/packages in PyPi hoster_pattern ([#1038](https://www.github.com/bioconda/bioconda-utils/issues/1038)) ([155fc91](https://www.github.com/bioconda/bioconda-utils/commit/155fc919464d8fad43d9eeba5481f75738b9bfa6))
+* networkx NodeView and random.shuffle incompatible ([#1035](https://www.github.com/bioconda/bioconda-utils/issues/1035)) ([0127c7f](https://www.github.com/bioconda/bioconda-utils/commit/0127c7f1605394731d98a177e439370add40de75))
+
+### [3.7.1](https://www.github.com/bioconda/bioconda-utils/compare/v3.7.0...v3.7.1) (2025-01-28)
+
+
+### Bug Fixes
+
+* allow tilde in conda version constraints ([#1033](https://www.github.com/bioconda/bioconda-utils/issues/1033)) ([017e54d](https://www.github.com/bioconda/bioconda-utils/commit/017e54de1779e4e0284fa02ca379c585d416c30c))
+
+## [3.7.0](https://www.github.com/bioconda/bioconda-utils/compare/v3.6.1...v3.7.0) (2025-01-06)
+
+
+### Features
+
+* add liblzma-devel to host deps for compiled bioc pkgs ([#1029](https://www.github.com/bioconda/bioconda-utils/issues/1029)) ([7194737](https://www.github.com/bioconda/bioconda-utils/commit/7194737f1b9cc3f605318a1e706f8c6810f74e59))
+* Bioconductor skeleton updates ([#1027](https://www.github.com/bioconda/bioconda-utils/issues/1027)) ([5a14a3e](https://www.github.com/bioconda/bioconda-utils/commit/5a14a3ef9277687e270a682911bded08868ee362))
+* improve build failure table in wiki ([#1031](https://www.github.com/bioconda/bioconda-utils/issues/1031)) ([f25bff9](https://www.github.com/bioconda/bioconda-utils/commit/f25bff924f7dac7b5ed8293dc5d1e54fb1f8f074))
+
+
+### Bug Fixes
+
+* don't decode ([#1030](https://www.github.com/bioconda/bioconda-utils/issues/1030)) ([0a4d558](https://www.github.com/bioconda/bioconda-utils/commit/0a4d5583f86f0752712158a77ca43049ce29ea74))
+
+### [3.6.1](https://www.github.com/bioconda/bioconda-utils/compare/v3.6.0...v3.6.1) (2024-12-14)
+
+
+### Bug Fixes
+
+* prune stopped containers after build ([#1025](https://www.github.com/bioconda/bioconda-utils/issues/1025)) ([3a178ef](https://www.github.com/bioconda/bioconda-utils/commit/3a178ef60899c73be1e7993d0c02229da9e19570))
+
+## [3.6.0](https://www.github.com/bioconda/bioconda-utils/compare/v3.5.0...v3.6.0) (2024-12-13)
+
+
+### Features
+
+* report resource usage before and after builds ([#1023](https://www.github.com/bioconda/bioconda-utils/issues/1023)) ([08ea458](https://www.github.com/bioconda/bioconda-utils/commit/08ea458d205232c57da4b4c4eaeb014d8cb69614))
+
 ## [3.5.0](https://www.github.com/bioconda/bioconda-utils/compare/v3.4.1...v3.5.0) (2024-11-29)
 
 
