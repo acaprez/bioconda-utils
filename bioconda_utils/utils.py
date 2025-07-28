@@ -345,7 +345,7 @@ ENV_VAR_WHITELIST = [
     'MACOSX_DEPLOYMENT_TARGET',
     'HTTPS_PROXY','HTTP_PROXY', 'https_proxy', 'http_proxy',
     'DEFAULT_LINUX_VERSION',
-    'GITLAB*', 'CI*',
+    'GITLAB*', 'CI*', 'CONDA_OVERRIDE_*',
 ]
 
 # Of those that make it through the whitelist, remove these specific ones
