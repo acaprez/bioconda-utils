@@ -1,5 +1,110 @@
 # Changelog
 
+## [4.4.1](https://github.com/bioconda/bioconda-utils/compare/v4.4.0...v4.4.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* remove reference to non-existent file ([#1106](https://github.com/bioconda/bioconda-utils/issues/1106)) ([7a6adce](https://github.com/bioconda/bioconda-utils/commit/7a6adceec9e2f922c71d506f95ec3a4385c7f961))
+
+## [4.4.0](https://github.com/bioconda/bioconda-utils/compare/v4.3.2...v4.4.0) (2026-04-28)
+
+
+### Features
+
+* add support for local (file://) channels ([#1103](https://github.com/bioconda/bioconda-utils/issues/1103)) ([0777f5e](https://github.com/bioconda/bioconda-utils/commit/0777f5ecea969bf52e09eb381437667fa1cfd067))
+
+## [4.3.2](https://github.com/bioconda/bioconda-utils/compare/v4.3.1...v4.3.2) (2026-04-19)
+
+
+### Bug Fixes
+
+* force finalized render on linux-64 / compiled recipes; drop no-op __glibc monkeypatch ([#1095](https://github.com/bioconda/bioconda-utils/issues/1095)) ([#1100](https://github.com/bioconda/bioconda-utils/issues/1100)) ([be77f11](https://github.com/bioconda/bioconda-utils/commit/be77f11587e35d4fcb38af740dbee9ccb85ea017))
+
+## [4.3.1](https://github.com/bioconda/bioconda-utils/compare/v4.3.0...v4.3.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **utils:** patch conda-build to include __glibc in hashes when using stdlib('c') ([#1096](https://github.com/bioconda/bioconda-utils/issues/1096)) ([027cbc8](https://github.com/bioconda/bioconda-utils/commit/027cbc85d1f9aa15f932901e58ab18f4cfb75ae3))
+
+## [4.3.0](https://github.com/bioconda/bioconda-utils/compare/v4.2.0...v4.3.0) (2026-04-08)
+
+
+### Features
+
+* allow and require {{ stdlib("c") }} in recipes ([#1091](https://github.com/bioconda/bioconda-utils/issues/1091)) ([7969780](https://github.com/bioconda/bioconda-utils/commit/7969780d1ef45491e0d3a96e10db6669c4b13c84))
+* bump deps 4-7-2026 ([#1094](https://github.com/bioconda/bioconda-utils/issues/1094)) ([3dcb072](https://github.com/bioconda/bioconda-utils/commit/3dcb07274a94b10bc8741b2acda98ef5f45077ca))
+
+## [4.2.0](https://github.com/bioconda/bioconda-utils/compare/v4.1.0...v4.2.0) (2026-04-02)
+
+
+### Features
+
+* Bump deps 4-2-2026 ([#1087](https://github.com/bioconda/bioconda-utils/issues/1087)) ([9e5e044](https://github.com/bioconda/bioconda-utils/commit/9e5e0441799d2c52f5459751f1ebea8c2a3cfa13))
+
+## [4.1.0](https://github.com/bioconda/bioconda-utils/compare/v4.0.0...v4.1.0) (2026-03-04)
+
+
+### Features
+
+* eliminate redundant host-side solver run for Docker builds ([#1081](https://github.com/bioconda/bioconda-utils/issues/1081)) ([3d4c9e1](https://github.com/bioconda/bioconda-utils/commit/3d4c9e1110ce0f9d7915685f1a43752bdda3e085))
+* pre-solved environments for mulled tests ([#1082](https://github.com/bioconda/bioconda-utils/issues/1082)) ([af1ac9c](https://github.com/bioconda/bioconda-utils/commit/af1ac9c8ddfa17f4055aab065aa61b93973f8c30))
+
+
+### Bug Fixes
+
+* add raise_for_status to CircleCI workflow API call ([#1083](https://github.com/bioconda/bioconda-utils/issues/1083)) ([2f558ee](https://github.com/bioconda/bioconda-utils/commit/2f558ee0664af9fbd4a2435ca8d7001c6c28cb19))
+
+## [4.0.0](https://github.com/bioconda/bioconda-utils/compare/v3.9.2...v4.0.0) (2026-02-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* also find tests under outputs, ensure all outputs have tests, ensure outputs names are different from package name ([#1057](https://github.com/bioconda/bioconda-utils/issues/1057))
+
+### Bug Fixes
+
+* also find tests under outputs, ensure all outputs have tests, ensure outputs names are different from package name ([#1057](https://github.com/bioconda/bioconda-utils/issues/1057)) ([dd17aa7](https://github.com/bioconda/bioconda-utils/commit/dd17aa76b2410901649fb33c14e876452d26be1b))
+* update actions ([#1076](https://github.com/bioconda/bioconda-utils/issues/1076)) ([e301b5c](https://github.com/bioconda/bioconda-utils/commit/e301b5c6d8139ce80fddb7262c9355cf3284320b))
+* Update anaconda-client version to 1.14.* ([#1075](https://github.com/bioconda/bioconda-utils/issues/1075)) ([0bdd2a9](https://github.com/bioconda/bioconda-utils/commit/0bdd2a9202ec84e00c0ec923a24fafe68e9ee3a0)), closes [#1074](https://github.com/bioconda/bioconda-utils/issues/1074)
+
+## [3.9.2](https://github.com/bioconda/bioconda-utils/compare/v3.9.1...v3.9.2) (2026-01-09)
+
+
+### Bug Fixes
+
+* remove deprecated pkg_resources usage ahead of planned removal in Setuptools ≥81 ([#1058](https://github.com/bioconda/bioconda-utils/issues/1058)) ([0ef2df1](https://github.com/bioconda/bioconda-utils/commit/0ef2df1a5395e0111446fe79b9e1efdd5d67a7af))
+* unexpected arg 'label' ([#1065](https://github.com/bioconda/bioconda-utils/issues/1065)) ([16f2ab9](https://github.com/bioconda/bioconda-utils/commit/16f2ab9b48b8337647e4e4acfc6263c0592dd4b4))
+
+## [3.9.1](https://github.com/bioconda/bioconda-utils/compare/v3.9.0...v3.9.1) (2025-08-13)
+
+
+### Bug Fixes
+
+* wrong jinja function definitions ([#1063](https://github.com/bioconda/bioconda-utils/issues/1063)) ([b94aa79](https://github.com/bioconda/bioconda-utils/commit/b94aa7938b3088babe7309d6ec2b8a6e0157331d))
+
+## [3.9.0](https://github.com/bioconda/bioconda-utils/compare/v3.8.0...v3.9.0) (2025-08-12)
+
+
+### Features
+
+* Bump deps 8-10-2025 ([#1059](https://github.com/bioconda/bioconda-utils/issues/1059)) ([7a8754f](https://github.com/bioconda/bioconda-utils/commit/7a8754fc178488cf5d04b40a943dd92d71f0dd33))
+
+## [3.8.0](https://github.com/bioconda/bioconda-utils/compare/v3.7.2...v3.8.0) (2025-08-01)
+
+
+### Features
+
+* replace deprecated find_packages with find_namespace_packages ([#1055](https://github.com/bioconda/bioconda-utils/issues/1055)) ([2ba618a](https://github.com/bioconda/bioconda-utils/commit/2ba618a41b8f2f6597c4802a49aa8c3999239fb0))
+* Update dependencies to latest versions ([#1054](https://github.com/bioconda/bioconda-utils/issues/1054)) ([c6698e3](https://github.com/bioconda/bioconda-utils/commit/c6698e3b31439cea12fd477bbf800d62f0c48501))
+
+
+### Bug Fixes
+
+* handle recipes with an empty extra section ([#1050](https://github.com/bioconda/bioconda-utils/issues/1050)) ([d6b01ec](https://github.com/bioconda/bioconda-utils/commit/d6b01ecdbdea32a6e3f21d5127500ad72d4797ab))
+* keep existing patches during bioconductor updates ([#1041](https://github.com/bioconda/bioconda-utils/issues/1041)) ([2d97074](https://github.com/bioconda/bioconda-utils/commit/2d97074e08e63504bfa88e2a79fa77c34aeb22bb))
+
 ### [3.7.2](https://www.github.com/bioconda/bioconda-utils/compare/v3.7.1...v3.7.2) (2025-03-20)
 
 

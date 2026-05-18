@@ -1,10 +1,8 @@
-import contextlib
 import datetime
 import os
-import os.path as op
 import shutil
-import tempfile
 from copy import deepcopy
+from pathlib import Path
 
 from ruamel.yaml import YAML
 import pandas as pd
@@ -15,14 +13,10 @@ from bioconda_utils import utils
 
 yaml = YAML(typ="rt")  # pylint: disable=invalid-name
 
-
 # common settings
-TEST_RECIPES_FOLDER = 'recipes'
-TEST_CONFIG_YAML_FNAME = 'config.yaml'
-TEST_CONFIG_YAML = {
-    'blacklists': [],
-    'channels': []
-}
+TEST_RECIPES_FOLDER = "recipes"
+TEST_CONFIG_YAML_FNAME = "config.yaml"
+TEST_CONFIG_YAML = {"blacklists": [], "channels": []}
 
 
 def pytest_runtest_makereport(item, call):
@@ -39,14 +33,13 @@ def pytest_runtest_setup(item):
 
 
 @pytest.fixture
-def mock_repodata(repodata, case):
+def mock_repodata(case):
     """Pepares RepoData singleton to contain mock data
 
-    Expects function to be parametrized with ``case`` and ``repodata``,
-    where ``case`` may contain a ``repodata`` key to be added to
-    base ``repodata`` contents.
+    Expects function to be parametrized with ``case``, where ``case`` may
+    contain a ``repodata`` key. If none exists, empty repodata is generated.
 
-    ``repodata`` should be of this form::
+    ``repodata:`` entry in a case YAML file should be of this form::
 
        <channel>:
           <package_name>:
@@ -59,31 +52,28 @@ def mock_repodata(repodata, case):
              - version: 0.1
                build_number: 0
     """
-    if 'repodata' in case:
-        data = deepcopy(repodata)
-        dict_merge(data, case['repodata'])
+    if "repodata" in case:
+        dataframe = pd.DataFrame(
+            (
+                {
+                    "channel": channel,
+                    "name": name,
+                    "build": "",
+                    "build_number": 0,
+                    "version": 0,
+                    "depends": [],
+                    "subdir": "",
+                    "platform": "noarch",
+                    **item,
+                }
+                for channel, packages in case["repodata"].items()
+                for name, versions in packages.items()
+                for item in versions
+            ),
+            columns=utils.RepoData.columns,
+        )
     else:
-        data = repodata
-
-    dataframe = pd.DataFrame(
-        (
-            {
-                'channel': channel,
-                'name': name,
-                'build': '',
-                'build_number': 0,
-                'version': 0,
-                'depends': [],
-                'subdir': '',
-                'platform': 'noarch',
-                **item,
-            }
-            for channel, packages in data.items()
-            for name, versions in packages.items()
-            for item in versions
-        ),
-        columns=utils.RepoData.columns,
-    )
+        dataframe = pd.DataFrame(dict(), columns=utils.RepoData.columns)
 
     backup = utils.RepoData()._df, utils.RepoData()._df_ts
     utils.RepoData()._df = dataframe
@@ -115,61 +105,60 @@ def dict_merge(base, add):
 @pytest.fixture
 def config_file(tmpdir: py.path.local, case):
     """Prepares Bioconda config.yaml"""
-    if 'add_root_files' in case:
-        for fname, data in case['add_root_files'].items():
-            with tmpdir.join(fname).open('w') as fdes:
+    if "add_root_files" in case:
+        for fname, data in case["add_root_files"].items():
+            with tmpdir.join(fname).open("w") as fdes:
                 fdes.write(data)
-        
+
     data = deepcopy(TEST_CONFIG_YAML)
-    if 'config' in case:
-        dict_merge(data, case['config'])
-    config_fname = tmpdir.join(TEST_CONFIG_YAML_FNAME)
-    with config_fname.open('w') as fdes:
+    if "config" in case:
+        dict_merge(data, case["config"])
+    config_fname = tmpdir.join(Path(TEST_CONFIG_YAML_FNAME))
+    with config_fname.open("w") as fdes:
         yaml.dump(data, fdes)
 
     yield config_fname
 
 
 @pytest.fixture
-def recipe_dir(recipes_folder: py.path.local, tmpdir: py.path.local,
-               case, recipe_data):
+def recipe_dirs(recipes_folder: py.path.local, tmpdir: py.path.local, case):
     """Prepares a recipe from recipe_data in recipes_folder"""
-    recipe = deepcopy(recipe_data['meta.yaml'])
-    if 'remove' in case:
-        for remove in utils.ensure_list(case['remove']):
-            path = remove.split('/')
-            cont = recipe
-            for p in path[:-1]:
-                cont = cont[p]
-            if isinstance(cont, list):
-                for n in range(len(cont)):
-                    del cont[n][path[-1]]
-            else:
-                del cont[path[-1]]
-    if 'add' in case:
-        dict_merge(recipe, case['add'])
+    recipe_dirs = []
+    recipes = case.get("recipes")
+    if not recipes:
+        raise LookupError(
+            "No `recipes:` entry found in this test case's YAML file, and testing nothing is not expected. Check folder lint_cases for the YAML file and include a `recipes:` entry."
+        )
+    for recipe_name in case.get("recipes", []):
+        recipe = deepcopy(case.get("recipes").get(recipe_name))
+        recipe_dir = recipes_folder.mkdir(recipe_name)
 
-    recipe_dir = recipes_folder.mkdir(recipe_data['folder'])
+        with recipe_dir.join("meta.yaml").open("w") as fdes:
+            yaml.dump(
+                recipe,
+                fdes,
+                transform=lambda string: string.replace("#{%", "{%").replace(
+                    "#{{", "{{"
+                ),
+            )
 
-    with recipe_dir.join('meta.yaml').open('w') as fdes:
-        yaml.dump(recipe, fdes,
-                  transform=lambda l: l.replace('#{%', '{%').replace("#{{", "{{"))
+        if "add_files" in case:
+            for fname, data in case["add_files"].items():
+                with recipe_dir.join(fname).open("w") as fdes:
+                    fdes.write(data)
 
-    if 'add_files' in case:
-        for fname, data in case['add_files'].items():
-            with recipe_dir.join(fname).open('w') as fdes:
-                fdes.write(data)
-
-    if 'move_files' in case:
-        for src, dest in case['move_files'].items():
-            src_path = recipe_dir.join(src)
-            if not dest:
-                if os.path.isdir(src_path):
-                    shutil.rmtree(src_path)
+        if "move_files" in case:
+            for src, dest in case["move_files"].items():
+                src_path = recipe_dir.join(src)
+                if not dest:
+                    if os.path.isdir(src_path):
+                        shutil.rmtree(src_path)
+                    else:
+                        os.remove(src_path)
                 else:
-                    os.remove(src_path)
-            else:
-                dest_path = recipe_dir.join(dest)
-                shutil.move(src_path, dest_path)
+                    dest_path = recipe_dir.join(dest)
+                    shutil.move(src_path, dest_path)
 
-    yield recipe_dir
+        recipe_dirs.append(recipe_dir)
+
+    yield recipe_dirs

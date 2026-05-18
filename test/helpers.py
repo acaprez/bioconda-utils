@@ -2,7 +2,7 @@ from textwrap import dedent
 import tempfile
 import yaml
 import os
-import subprocess as sp
+from typing import Dict, List
 
 from conda_index.index import update_index
 
@@ -82,7 +82,6 @@ class Recipes(object):
 
         from_string : bool
 
-
         Useful attributes:
 
         * recipes: a dict mapping recipe names to parsed meta.yaml contents
@@ -98,6 +97,7 @@ class Recipes(object):
         else:
             self.data = os.path.join(os.path.dirname(__file__), data)
             self.recipes = yaml.safe_load(open(self.data))
+        self.pkgs: Dict[str, List[str]] = {}
 
     def write_recipes(self):
         basedir = tempfile.mkdtemp()
@@ -107,7 +107,7 @@ class Recipes(object):
             os.makedirs(rdir)
             self.recipe_dirs[name] = rdir
             for key, value in recipe.items():
-                with open(os.path.join(rdir, key), 'w') as fout:
+                with open(os.path.join(rdir, key), "w") as fout:
                     fout.write(value)
         self.basedir = basedir
 

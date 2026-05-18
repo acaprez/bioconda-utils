@@ -7,7 +7,7 @@ These checks catch errors relating to the use of ``-
 
 import os
 
-from . import INFO, WARNING, LintCheck
+from . import INFO, WARNING, LintCheck, _recipe
 
 
 class should_use_compilers(LintCheck):
@@ -41,7 +41,7 @@ class should_use_compilers(LintCheck):
         "rust",
     )
 
-    def check_deps(self, deps):
+    def check_deps(self, deps: dict[str, list[str]]) -> None:
         for compiler in self.compilers:
             for location in deps.get(compiler, []):
                 self.message(section=location)
@@ -55,7 +55,7 @@ class compilers_must_be_in_build(LintCheck):
 
     """
 
-    def check_deps(self, deps):
+    def check_deps(self, deps: dict[str, list[str]]) -> None:
         for dep in deps:
             if dep.startswith("compiler_"):
                 for location in deps[dep]:
@@ -63,18 +63,41 @@ class compilers_must_be_in_build(LintCheck):
                         self.message(section=location)
 
 
+class compiler_needs_stdlib_c(LintCheck):
+    """The recipe requests a compiler in the build section, but does not have stdlib.
+
+    Please add the ``{{ stdlib('c') }}`` line to the
+    ``requirements: build:`` section.
+    """
+
+    def check_deps(self, deps: dict[str, list[str]]) -> None:
+        compiler = False
+        stdlib = False
+        for dep, locations in deps.items():
+            if dep.startswith("compiler_") and any(
+                ["build" in location for location in locations]
+            ):
+                compiler = True
+            if dep == "stdlib_c" and any(
+                ["build" in location for location in locations]
+            ):
+                stdlib = True
+        if compiler and not stdlib:
+            self.message(section="requirements/build")
+
+
 class uses_setuptools(LintCheck):
     """The recipe uses setuptools in run depends
 
-    Most Python packages only need setuptools during installation.
-    Check if the package really needs setuptools (e.g. because it uses
-    pkg_resources or setuptools console scripts).
+    Most Python packages only need setuptools during installation. Check if the
+    package really needs setuptools (e.g. because it uses pkg_resources
+    (deprecated; slated for removal) or setuptools console scripts).
 
     """
 
     severity = INFO
 
-    def check_recipe(self, recipe):
+    def check_recipe(self, recipe: _recipe.Recipe) -> None:
         if "setuptools" in recipe.get_deps("run"):
             self.message()
 
@@ -101,7 +124,7 @@ class setup_py_install_args(LintCheck):
             return True
         return False
 
-    def check_deps(self, deps):
+    def check_deps(self, deps: dict[str, list[str]]) -> None:
         if "setuptools" not in deps:
             return  # no setuptools, no problem
 
@@ -127,7 +150,7 @@ class cython_must_be_in_host(LintCheck):
           - cython
     """
 
-    def check_deps(self, deps):
+    def check_deps(self, deps: dict[str, list[str]]) -> None:
         if "cython" in deps:
             if any("host" not in location for location in deps["cython"]):
                 self.message()
@@ -146,7 +169,7 @@ class cython_needs_compiler(LintCheck):
 
     severity = WARNING
 
-    def check_deps(self, deps):
+    def check_deps(self, deps: dict[str, list[str]]) -> None:
         if "cython" in deps and "compiler_c" not in deps and "compiler_cxx" not in deps:
             self.message()
 
@@ -209,7 +232,7 @@ class missing_run_exports(LintCheck):
     run_exports in upstream packages as well if needed.
     """
 
-    def check_recipe(self, recipe):
+    def check_recipe(self, recipe: _recipe.Recipe) -> None:
         build = recipe.meta.get("build", dict())
         if "run_exports" not in build:
             self.message()
